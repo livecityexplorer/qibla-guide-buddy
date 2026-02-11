@@ -10,6 +10,8 @@ import QiblaPage from "./pages/QiblaPage";
 import QuranPage from "./pages/QuranPage";
 import HadithPage from "./pages/HadithPage";
 import HalalScannerPage from "./pages/HalalScannerPage";
+import RamadanPage from "./pages/RamadanPage";
+import BoycottScannerPage from "./pages/BoycottScannerPage";
 import NearbyPage from "./pages/NearbyPage";
 import NotFound from "./pages/NotFound";
 
@@ -29,6 +31,8 @@ const App = () => (
             <Route path="/quran" element={<QuranPage />} />
             <Route path="/hadith" element={<HadithPage />} />
             <Route path="/scanner" element={<HalalScannerPage />} />
+            <Route path="/ramadan" element={<RamadanPage />} />
+            <Route path="/boycott" element={<BoycottScannerPage />} />
             <Route path="/nearby" element={<NearbyPage />} />
           </Route>
           <Route path="*" element={<NotFound />} />
