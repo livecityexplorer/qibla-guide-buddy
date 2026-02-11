@@ -1,6 +1,6 @@
 import { useMemo } from "react";
 import { motion } from "framer-motion";
-import { Clock, BookOpen, Compass, ScanLine, MapPin, Moon } from "lucide-react";
+import { Clock, BookOpen, Compass, ScanLine, MapPin, Moon, Star, ShieldAlert } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import heroImage from "@/assets/hero-mosque.jpg";
 
@@ -17,6 +17,8 @@ const QUICK_ACTIONS = [
   { label: "Qibla", icon: Compass, path: "/qibla", color: "gradient-emerald" },
   { label: "Quran", icon: BookOpen, path: "/quran", color: "gradient-emerald" },
   { label: "Halal Scanner", icon: ScanLine, path: "/scanner", color: "gradient-emerald" },
+  { label: "Ramadan", icon: Star, path: "/ramadan", color: "gradient-emerald" },
+  { label: "Boycott", icon: ShieldAlert, path: "/boycott", color: "gradient-emerald" },
   { label: "Nearby", icon: MapPin, path: "/nearby", color: "gradient-emerald" },
   { label: "Hadith", icon: Moon, path: "/hadith", color: "gradient-emerald" },
 ];
