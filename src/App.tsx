@@ -21,6 +21,7 @@ import LearnPage from "./pages/halal-scanner/LearnPage";
 import SettingsPage from "./pages/halal-scanner/SettingsPage";
 import RamadanPage from "./pages/RamadanPage";
 import BoycottScannerPage from "./pages/BoycottScannerPage";
+import BoycottScanPage from "./pages/boycott/BoycottScanPage";
 import NearbyPage from "./pages/NearbyPage";
 import NotFound from "./pages/NotFound";
 import { QuranPlayerProvider } from "./contexts/QuranPlayerContext";
