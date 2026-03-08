@@ -82,13 +82,25 @@ function buildAddress(tags: Record<string, string>): string {
   return parts.length > 0 ? parts.join(", ") : tags["addr:full"] || "";
 }
 
+async function fetchOverpassWithRetry(query: string, retries = 2): Promise<Response> {
+  for (let i = 0; i <= retries; i++) {
+    const res = await fetch("https://overpass-api.de/api/interpreter", {
+      method: "POST",
+      headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      body: `data=${encodeURIComponent(query)}`,
+    });
+    if (res.status === 429 && i < retries) {
+      await new Promise(r => setTimeout(r, 3000 * (i + 1)));
+      continue;
+    }
+    return res;
+  }
+  throw new Error("Overpass API rate limited");
+}
+
 async function searchNearby(lat: number, lon: number, type: PlaceType | "all", radius = 5000): Promise<NearbyPlace[]> {
   const query = buildOverpassQuery(lat, lon, radius, type);
-  const res = await fetch("https://overpass-api.de/api/interpreter", {
-    method: "POST",
-    headers: { "Content-Type": "application/x-www-form-urlencoded" },
-    body: `data=${encodeURIComponent(query)}`,
-  });
+  const res = await fetchOverpassWithRetry(query);
 
   if (!res.ok) throw new Error(`Overpass API error: ${res.status}`);
   const data = await res.json();
@@ -131,33 +143,46 @@ async function searchNearby(lat: number, lon: number, type: PlaceType | "all", r
 }
 
 // Also search Nominatim for additional results
-async function searchNominatim(lat: number, lon: number, type: PlaceType): Promise<NearbyPlace[]> {
-  const queries: Record<PlaceType, string> = {
-    mosque: "mosque",
-    restaurant: "halal restaurant",
-    shop: "halal shop",
-    butcher: "halal butcher",
+async function searchNominatim(lat: number, lon: number, type: PlaceType, radius = 5000): Promise<NearbyPlace[]> {
+  const queries: Record<PlaceType, string[]> = {
+    mosque: ["mosque", "masjid", "islamic center"],
+    restaurant: ["halal restaurant", "halal food"],
+    shop: ["halal shop", "halal grocery"],
+    butcher: ["halal butcher", "halal meat"],
   };
 
-  try {
-    const q = queries[type];
-    const res = await fetch(
-      `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(q)}&format=json&limit=10&lat=${lat}&lon=${lon}&bounded=1&viewbox=${lon - 0.05},${lat + 0.05},${lon + 0.05},${lat - 0.05}`,
-      { headers: { "User-Agent": "IslamicCompanionApp/1.0" } }
-    );
-    if (!res.ok) return [];
-    const data = await res.json();
+  const degreeSpread = Math.max(0.1, radius / 111000 * 1.5);
+  const allResults: NearbyPlace[] = [];
 
-    return data.map((item: any) => ({
-      id: item.place_id,
-      name: item.display_name?.split(",")[0] || "Unknown",
-      type,
-      lat: parseFloat(item.lat),
-      lon: parseFloat(item.lon),
-      distance: haversineDistance(lat, lon, parseFloat(item.lat), parseFloat(item.lon)),
-      address: item.display_name?.split(",").slice(1, 3).join(",").trim() || "",
-      tags: {},
-    }));
+  try {
+    for (const q of queries[type]) {
+      const res = await fetch(
+        `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(q)}&format=json&limit=20&lat=${lat}&lon=${lon}&viewbox=${lon - degreeSpread},${lat + degreeSpread},${lon + degreeSpread},${lat - degreeSpread}`,
+        { headers: { "User-Agent": "IslamicCompanionApp/1.0" } }
+      );
+      if (!res.ok) continue;
+      const data = await res.json();
+
+      for (const item of data) {
+        const itemLat = parseFloat(item.lat);
+        const itemLon = parseFloat(item.lon);
+        const dist = haversineDistance(lat, lon, itemLat, itemLon);
+        if (dist > radius / 1000 * 1.5) continue; // allow some slack beyond radius
+        allResults.push({
+          id: item.place_id,
+          name: item.display_name?.split(",")[0] || "Unknown",
+          type,
+          lat: itemLat,
+          lon: itemLon,
+          distance: dist,
+          address: item.display_name?.split(",").slice(1, 3).join(",").trim() || "",
+          tags: {},
+        });
+      }
+      // Small delay between Nominatim requests to respect rate limits
+      await new Promise(r => setTimeout(r, 1100));
+    }
+    return allResults;
   } catch {
     return [];
   }
@@ -187,10 +212,23 @@ const NearbyPage = () => {
     setError("");
     try {
       // Fetch from Overpass (main) + Nominatim (supplementary) in parallel
-      const [overpassResults, nominatimResults] = await Promise.all([
-        searchNearby(lat, lon, type, searchRadius),
-        type !== "all" ? searchNominatim(lat, lon, type) : Promise.resolve([]),
-      ]);
+      // Fetch Overpass first, then Nominatim as fallback for each relevant type
+      let overpassResults: NearbyPlace[] = [];
+      try {
+        overpassResults = await searchNearby(lat, lon, type, searchRadius);
+      } catch (e) {
+        console.warn("Overpass failed, relying on Nominatim:", e);
+      }
+
+      const typesToSearch: PlaceType[] = type === "all" 
+        ? ["mosque", "restaurant", "shop", "butcher"] 
+        : [type];
+      
+      let nominatimResults: NearbyPlace[] = [];
+      for (const t of typesToSearch) {
+        const results = await searchNominatim(lat, lon, t, searchRadius);
+        nominatimResults.push(...results);
+      }
 
       // Merge and deduplicate
       const merged = [...overpassResults];
