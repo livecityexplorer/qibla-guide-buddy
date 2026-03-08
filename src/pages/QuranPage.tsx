@@ -1,60 +1,116 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { ArrowLeft, Search } from "lucide-react";
+import { ArrowLeft, Search, Play, Pause, Volume2, Globe, Loader2 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
-
-const SURAHS = [
-  { number: 1, name: "Al-Fatiha", arabic: "الفاتحة", verses: 7, type: "Meccan" },
-  { number: 2, name: "Al-Baqarah", arabic: "البقرة", verses: 286, type: "Medinan" },
-  { number: 3, name: "Ali 'Imran", arabic: "آل عمران", verses: 200, type: "Medinan" },
-  { number: 4, name: "An-Nisa", arabic: "النساء", verses: 176, type: "Medinan" },
-  { number: 5, name: "Al-Ma'idah", arabic: "المائدة", verses: 120, type: "Medinan" },
-  { number: 36, name: "Ya-Sin", arabic: "يس", verses: 83, type: "Meccan" },
-  { number: 55, name: "Ar-Rahman", arabic: "الرحمن", verses: 78, type: "Medinan" },
-  { number: 56, name: "Al-Waqi'ah", arabic: "الواقعة", verses: 96, type: "Meccan" },
-  { number: 67, name: "Al-Mulk", arabic: "الملك", verses: 30, type: "Meccan" },
-  { number: 112, name: "Al-Ikhlas", arabic: "الإخلاص", verses: 4, type: "Meccan" },
-  { number: 113, name: "Al-Falaq", arabic: "الفلق", verses: 5, type: "Meccan" },
-  { number: 114, name: "An-Nas", arabic: "الناس", verses: 6, type: "Meccan" },
-];
-
-const FATIHA_VERSES = [
-  { number: 1, arabic: "بِسْمِ ٱللَّهِ ٱلرَّحْمَـٰنِ ٱلرَّحِيمِ", translation: "In the name of Allah, the Most Gracious, the Most Merciful." },
-  { number: 2, arabic: "ٱلْحَمْدُ لِلَّهِ رَبِّ ٱلْعَـٰلَمِينَ", translation: "All praise is due to Allah, Lord of all worlds." },
-  { number: 3, arabic: "ٱلرَّحْمَـٰنِ ٱلرَّحِيمِ", translation: "The Most Gracious, the Most Merciful." },
-  { number: 4, arabic: "مَـٰلِكِ يَوْمِ ٱلدِّينِ", translation: "Master of the Day of Judgment." },
-  { number: 5, arabic: "إِيَّاكَ نَعْبُدُ وَإِيَّاكَ نَسْتَعِينُ", translation: "You alone we worship, and You alone we ask for help." },
-  { number: 6, arabic: "ٱهْدِنَا ٱلصِّرَٰطَ ٱلْمُسْتَقِيمَ", translation: "Guide us on the Straight Path." },
-  { number: 7, arabic: "صِرَٰطَ ٱلَّذِينَ أَنْعَمْتَ عَلَيْهِمْ غَيْرِ ٱلْمَغْضُوبِ عَلَيْهِمْ وَلَا ٱلضَّآلِّينَ", translation: "The path of those You have blessed—not those who incurred wrath, nor those who went astray." },
-];
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { useQuranPlayer } from "@/contexts/QuranPlayerContext";
+import {
+  getAllSurahs,
+  getSurahArabic,
+  getSurahTranslation,
+  TRANSLATION_EDITIONS,
+  RECITERS,
+  type Surah,
+  type Ayah,
+  type SurahData,
+} from "@/services/quranService";
 
 const QuranPage = () => {
   const navigate = useNavigate();
+  const player = useQuranPlayer();
   const [search, setSearch] = useState("");
+  const [surahs, setSurahs] = useState<Surah[]>([]);
   const [selectedSurah, setSelectedSurah] = useState<number | null>(null);
+  const [arabicData, setArabicData] = useState<SurahData | null>(null);
+  const [translationData, setTranslationData] = useState<SurahData | null>(null);
+  const [translationEdition, setTranslationEdition] = useState(
+    localStorage.getItem("quran-translation") || "en.sahih"
+  );
+  const [loading, setLoading] = useState(false);
+  const [loadingSurahs, setLoadingSurahs] = useState(true);
 
-  const filtered = SURAHS.filter(
+  // Load all surahs on mount
+  useEffect(() => {
+    getAllSurahs()
+      .then(setSurahs)
+      .catch(console.error)
+      .finally(() => setLoadingSurahs(false));
+  }, []);
+
+  // Load surah data when selected
+  useEffect(() => {
+    if (!selectedSurah) return;
+    setLoading(true);
+    Promise.all([
+      getSurahArabic(selectedSurah),
+      getSurahTranslation(selectedSurah, translationEdition),
+    ])
+      .then(([arabic, translation]) => {
+        setArabicData(arabic);
+        setTranslationData(translation);
+      })
+      .catch(console.error)
+      .finally(() => setLoading(false));
+  }, [selectedSurah, translationEdition]);
+
+  const handleTranslationChange = (edition: string) => {
+    setTranslationEdition(edition);
+    localStorage.setItem("quran-translation", edition);
+  };
+
+  const filtered = surahs.filter(
     (s) =>
-      s.name.toLowerCase().includes(search.toLowerCase()) ||
-      s.arabic.includes(search)
+      s.englishName.toLowerCase().includes(search.toLowerCase()) ||
+      s.name.includes(search) ||
+      s.number.toString() === search
   );
 
+  const handlePlayAyah = (ayah: Ayah, index: number) => {
+    if (!arabicData) return;
+    player.play(ayah, arabicData.englishName, arabicData.ayahs, index);
+  };
+
+  const handlePlayAll = () => {
+    if (!arabicData) return;
+    player.playAll(arabicData.ayahs, arabicData.englishName);
+  };
+
   return (
-    <div className="min-h-screen">
+    <div className="min-h-screen pb-20">
       <div className="gradient-emerald px-4 pb-6 pt-12 islamic-pattern">
-        <button onClick={() => selectedSurah ? setSelectedSurah(null) : navigate("/")} className="mb-4 flex items-center gap-2 text-primary-foreground/80">
-          <ArrowLeft size={20} />
-          <span className="text-sm">Back</span>
-        </button>
+        <div className="flex items-center justify-between mb-4">
+          <button
+            onClick={() => (selectedSurah ? setSelectedSurah(null) : navigate("/"))}
+            className="flex items-center gap-2 text-primary-foreground/80"
+          >
+            <ArrowLeft size={20} />
+            <span className="text-sm">Back</span>
+          </button>
+
+          {/* Reciter selector */}
+          <Select value={player.reciter} onValueChange={player.setReciter}>
+            <SelectTrigger className="w-auto max-w-[160px] h-8 text-xs bg-primary-foreground/20 border-0 text-primary-foreground">
+              <Volume2 size={12} className="mr-1" />
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {RECITERS.map((r) => (
+                <SelectItem key={r.id} value={r.id} className="text-xs">
+                  {r.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
         <h1 className="text-2xl font-bold text-primary-foreground">Holy Quran</h1>
-        <p className="mt-1 text-sm text-primary-foreground/70">Read and reflect</p>
+        <p className="mt-1 text-sm text-primary-foreground/70">Read, listen & reflect</p>
       </div>
 
       <AnimatePresence mode="wait">
         {selectedSurah === null ? (
           <motion.div key="list" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="px-4 -mt-3 pb-6">
             {/* Search */}
-            <div className="relative mb-4">
+            <div className="relative mb-3">
               <Search size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
               <input
                 value={search}
@@ -64,49 +120,137 @@ const QuranPage = () => {
               />
             </div>
 
-            <div className="space-y-2">
-              {filtered.map((surah, i) => (
-                <motion.button
-                  key={surah.number}
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: i * 0.03 }}
-                  onClick={() => surah.number === 1 && setSelectedSurah(1)}
-                  className="flex w-full items-center gap-4 rounded-xl bg-card p-4 text-left shadow-sm transition-all hover:shadow-md active:scale-[0.98]"
-                >
-                  <div className="flex h-10 w-10 items-center justify-center rounded-lg gradient-emerald">
-                    <span className="text-sm font-bold text-primary-foreground">{surah.number}</span>
-                  </div>
-                  <div className="flex-1">
-                    <p className="font-semibold text-foreground">{surah.name}</p>
-                    <p className="text-xs text-muted-foreground">{surah.verses} verses · {surah.type}</p>
-                  </div>
-                  <p className="text-lg font-arabic text-primary">{surah.arabic}</p>
-                </motion.button>
-              ))}
+            {/* Translation selector */}
+            <div className="mb-4 flex items-center gap-2">
+              <Globe size={14} className="text-muted-foreground shrink-0" />
+              <Select value={translationEdition} onValueChange={handleTranslationChange}>
+                <SelectTrigger className="w-full h-9 text-xs">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent className="max-h-60">
+                  {TRANSLATION_EDITIONS.map((e) => (
+                    <SelectItem key={e.id} value={e.id} className="text-xs">
+                      {e.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
+
+            {loadingSurahs ? (
+              <div className="flex items-center justify-center py-20">
+                <Loader2 className="animate-spin text-primary" size={32} />
+              </div>
+            ) : (
+              <div className="space-y-2">
+                {filtered.map((surah, i) => (
+                  <motion.button
+                    key={surah.number}
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: Math.min(i * 0.02, 0.5) }}
+                    onClick={() => setSelectedSurah(surah.number)}
+                    className="flex w-full items-center gap-4 rounded-xl bg-card p-4 text-left shadow-sm transition-all hover:shadow-md active:scale-[0.98]"
+                  >
+                    <div className="flex h-10 w-10 items-center justify-center rounded-lg gradient-emerald shrink-0">
+                      <span className="text-sm font-bold text-primary-foreground">{surah.number}</span>
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="font-semibold text-foreground">{surah.englishName}</p>
+                      <p className="text-xs text-muted-foreground truncate">
+                        {surah.englishNameTranslation} · {surah.numberOfAyahs} ayahs · {surah.revelationType}
+                      </p>
+                    </div>
+                    <p className="text-lg font-arabic text-primary shrink-0">{surah.name}</p>
+                  </motion.button>
+                ))}
+              </div>
+            )}
           </motion.div>
         ) : (
-          <motion.div key="reading" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="px-4 py-6 space-y-6">
-            <div className="rounded-xl gradient-emerald p-4 text-center shadow-emerald">
-              <h2 className="text-xl font-bold text-primary-foreground font-arabic">سُورَةُ الفَاتِحَة</h2>
-              <p className="mt-1 text-sm text-primary-foreground/70">Al-Fatiha · The Opening</p>
-            </div>
-            {FATIHA_VERSES.map((verse, i) => (
-              <motion.div
-                key={verse.number}
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: i * 0.1 }}
-                className="rounded-xl bg-card p-5 shadow-sm"
-              >
-                <div className="mb-1 flex items-center gap-2">
-                  <span className="flex h-6 w-6 items-center justify-center rounded-full bg-secondary text-xs font-bold text-secondary-foreground">{verse.number}</span>
+          <motion.div key="reading" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="px-4 py-4 space-y-4">
+            {loading ? (
+              <div className="flex items-center justify-center py-20">
+                <Loader2 className="animate-spin text-primary" size={32} />
+              </div>
+            ) : arabicData ? (
+              <>
+                {/* Surah header */}
+                <div className="rounded-xl gradient-emerald p-4 text-center shadow-emerald">
+                  <h2 className="text-xl font-bold text-primary-foreground font-arabic">{arabicData.name}</h2>
+                  <p className="mt-1 text-sm text-primary-foreground/70">
+                    {arabicData.englishName} · {arabicData.englishNameTranslation}
+                  </p>
+                  <p className="text-xs text-primary-foreground/50 mt-1">
+                    {arabicData.numberOfAyahs} ayahs · {arabicData.revelationType}
+                  </p>
+                  <button
+                    onClick={handlePlayAll}
+                    className="mt-3 inline-flex items-center gap-2 rounded-full bg-primary-foreground/20 px-4 py-2 text-sm font-medium text-primary-foreground"
+                  >
+                    <Play size={14} /> Play All
+                  </button>
                 </div>
-                <p className="mt-3 text-right text-2xl leading-loose font-arabic text-foreground">{verse.arabic}</p>
-                <p className="mt-3 text-sm leading-relaxed text-muted-foreground">{verse.translation}</p>
-              </motion.div>
-            ))}
+
+                {/* Translation selector inline */}
+                <div className="flex items-center gap-2">
+                  <Globe size={14} className="text-muted-foreground shrink-0" />
+                  <Select value={translationEdition} onValueChange={handleTranslationChange}>
+                    <SelectTrigger className="w-full h-9 text-xs">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent className="max-h-60">
+                      {TRANSLATION_EDITIONS.map((e) => (
+                        <SelectItem key={e.id} value={e.id} className="text-xs">
+                          {e.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                {/* Ayahs */}
+                {arabicData.ayahs.map((ayah, i) => {
+                  const translation = translationData?.ayahs?.[i];
+                  const isCurrentlyPlaying = player.currentAyah?.number === ayah.number;
+                  return (
+                    <motion.div
+                      key={ayah.number}
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: Math.min(i * 0.03, 1) }}
+                      className={`rounded-xl p-5 shadow-sm transition-colors ${
+                        isCurrentlyPlaying ? "bg-secondary border-2 border-primary/30" : "bg-card"
+                      }`}
+                    >
+                      <div className="flex items-center justify-between mb-3">
+                        <span className="flex h-7 w-7 items-center justify-center rounded-full bg-secondary text-xs font-bold text-secondary-foreground">
+                          {ayah.numberInSurah}
+                        </span>
+                        <button
+                          onClick={() => handlePlayAyah(ayah, i)}
+                          className={`p-2 rounded-full transition-colors ${
+                            isCurrentlyPlaying ? "gradient-emerald" : "bg-secondary hover:bg-secondary/80"
+                          }`}
+                        >
+                          {isCurrentlyPlaying && player.isPlaying ? (
+                            <Pause size={14} className={isCurrentlyPlaying ? "text-primary-foreground" : "text-foreground"} />
+                          ) : (
+                            <Play size={14} className={isCurrentlyPlaying ? "text-primary-foreground" : "text-foreground"} />
+                          )}
+                        </button>
+                      </div>
+                      <p className="text-right text-2xl leading-[2.2] font-arabic text-foreground">{ayah.text}</p>
+                      {translation && (
+                        <p className="mt-3 text-sm leading-relaxed text-muted-foreground border-t border-border pt-3">
+                          {translation.text}
+                        </p>
+                      )}
+                    </motion.div>
+                  );
+                })}
+              </>
+            ) : null}
           </motion.div>
         )}
       </AnimatePresence>
