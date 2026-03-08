@@ -206,6 +206,76 @@ async function searchNominatim(lat: number, lon: number, type: PlaceType, radius
   }
 }
 
+// OpenTripMap API - free source for mosques (religion.place_of_worship.islam)
+async function searchOpenTripMap(lat: number, lon: number, radius: number): Promise<NearbyPlace[]> {
+  try {
+    const res = await fetch(
+      `https://api.opentripmap.com/0.1/en/places/radius?radius=${radius}&lon=${lon}&lat=${lat}&kinds=mosques&format=json&limit=50&apikey=5ae2e3f221c38a28845f05b6aed6fd5e93eecbf2f4d5b909a8c90d31`
+    );
+    if (!res.ok) return [];
+    const data = await res.json();
+    
+    return data
+      .filter((item: any) => item.name)
+      .map((item: any) => ({
+        id: item.xid ? parseInt(item.xid.replace(/\D/g, "").slice(0, 9)) || Math.random() * 100000 : Math.random() * 100000,
+        name: item.name,
+        type: "mosque" as PlaceType,
+        lat: item.point?.lat || 0,
+        lon: item.point?.lon || 0,
+        distance: haversineDistance(lat, lon, item.point?.lat || 0, item.point?.lon || 0),
+        address: "",
+        tags: {},
+      }));
+  } catch {
+    return [];
+  }
+}
+
+// Photon geocoder (Komoot) - another free OSM-based search engine  
+async function searchPhoton(lat: number, lon: number, type: PlaceType, radius: number): Promise<NearbyPlace[]> {
+  const queries: Record<PlaceType, string[]> = {
+    mosque: ["mosque", "masjid", "mezquita"],
+    restaurant: ["halal restaurant"],
+    shop: ["halal shop"],
+    butcher: ["halal butcher"],
+  };
+
+  const allResults: NearbyPlace[] = [];
+  try {
+    for (const q of queries[type]) {
+      const res = await fetch(
+        `https://photon.komoot.io/api/?q=${encodeURIComponent(q)}&lat=${lat}&lon=${lon}&limit=20&lang=en`
+      );
+      if (!res.ok) continue;
+      const data = await res.json();
+
+      for (const feature of data.features || []) {
+        const coords = feature.geometry?.coordinates;
+        if (!coords) continue;
+        const fLon = coords[0];
+        const fLat = coords[1];
+        const dist = haversineDistance(lat, lon, fLat, fLon);
+        if (dist > radius / 1000 * 2) continue;
+        const props = feature.properties || {};
+        allResults.push({
+          id: props.osm_id || Math.floor(Math.random() * 100000),
+          name: props.name || "Unknown",
+          type,
+          lat: fLat,
+          lon: fLon,
+          distance: dist,
+          address: [props.street, props.city, props.country].filter(Boolean).join(", "),
+          tags: {},
+        });
+      }
+    }
+    return allResults;
+  } catch {
+    return [];
+  }
+}
+
 const NearbyPage = () => {
   const navigate = useNavigate();
   const { t } = useTranslation();
