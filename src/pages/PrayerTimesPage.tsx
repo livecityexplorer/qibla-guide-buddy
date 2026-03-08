@@ -72,7 +72,11 @@ const PrayerTimesPage = () => {
             <div>
               <p className="text-sm font-medium text-foreground">Enable Adhan</p>
               <p className="text-xs text-muted-foreground">
-                {notificationGranted ? "Notifications allowed" : "Will request permission"}
+                {settings.enabled
+                  ? notificationGranted
+                    ? "✅ Active with notifications"
+                    : "🔊 Audio only (notifications unavailable)"
+                  : "Tap to enable Adhan alerts"}
               </p>
             </div>
             <Switch
@@ -156,10 +160,13 @@ const PrayerTimesPage = () => {
                 </button>
               </div>
 
-              {!notificationGranted && (
-                <p className="mt-2 text-xs text-destructive">
-                  ⚠️ Please allow notifications for background Adhan alerts
-                </p>
+              {!notificationGranted && settings.enabled && (
+                <div className="mt-3 rounded-lg bg-accent/10 border border-accent/20 p-3">
+                  <p className="text-xs text-foreground font-medium">💡 Notifications not available</p>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Adhan audio will play when the app is open. For background notifications, open the app in a new browser tab (not in a preview) and allow notifications.
+                  </p>
+                </div>
               )}
             </>
           )}
