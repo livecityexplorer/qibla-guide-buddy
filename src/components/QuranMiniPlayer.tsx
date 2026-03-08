@@ -34,7 +34,7 @@ const QuranMiniPlayer = () => {
             className="mx-2 mb-1 rounded-t-2xl bg-card border border-border border-b-0 p-4 shadow-lg"
           >
             <div className="text-center mb-3">
-              <p className="text-lg font-arabic font-bold text-foreground leading-loose">
+              <p className="text-lg font-arabic font-bold text-foreground leading-loose" translate="no">
                 {currentSurahName}
               </p>
               <p className="text-xs text-muted-foreground mt-1">
