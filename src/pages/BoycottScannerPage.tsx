@@ -1,90 +1,76 @@
-import { useState } from "react";
-import { motion } from "framer-motion";
-import { ArrowLeft, ScanLine, ShieldAlert, ShieldCheck, Search } from "lucide-react";
+import { useState, useMemo } from "react";
+import { motion, AnimatePresence } from "framer-motion";
+import { ArrowLeft, ScanLine, ShieldAlert, ShieldCheck, Search, Filter, ChevronDown, ExternalLink } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+import { boycottDirectory, searchBoycottDirectory, getLevelConfig, type BoycottEntry, type BoycottLevel } from "@/data/boycottDirectory";
 
-type BoycottResult = {
-  status: "boycott" | "safe" | "unknown";
-  brand: string;
-  parent: string;
-  reason: string;
-  alternatives?: string;
-};
-
-const BOYCOTT_DATABASE: Record<string, BoycottResult> = {
-  "starbucks": { status: "boycott", brand: "Starbucks", parent: "Starbucks Corp.", reason: "Linked to funding activities supporting apartheid. Multiple BDS campaigns active.", alternatives: "Support local coffee shops and Palestinian-owned businesses." },
-  "mcdonald": { status: "boycott", brand: "McDonald's", parent: "McDonald's Corp.", reason: "Franchise operations and corporate ties to apartheid-supporting entities.", alternatives: "Try local halal restaurants and independent burger joints." },
-  "coca cola": { status: "boycott", brand: "Coca-Cola", parent: "The Coca-Cola Company", reason: "Operations and investments linked to apartheid-supporting regions.", alternatives: "Try local beverages, fresh juices, or ethical brands." },
-  "nestle": { status: "boycott", brand: "Nestlé", parent: "Nestlé S.A.", reason: "Major operations and investments in apartheid-supporting regions.", alternatives: "Look for local and ethical food brands." },
-  "puma": { status: "boycott", brand: "Puma", parent: "Puma SE", reason: "Official sponsor of apartheid-linked sports federation.", alternatives: "Consider ethical sportswear brands." },
-  "hp": { status: "boycott", brand: "HP", parent: "HP Inc.", reason: "Provides technology used in apartheid checkpoints and surveillance.", alternatives: "Consider alternative tech brands like Lenovo or ASUS." },
-  "sabra": { status: "boycott", brand: "Sabra", parent: "Strauss Group", reason: "Parent company has direct ties to apartheid military units.", alternatives: "Make homemade hummus or buy from local brands." },
-  "ahava": { status: "boycott", brand: "AHAVA", parent: "AHAVA Dead Sea Laboratories", reason: "Products sourced from occupied territories.", alternatives: "Look for ethical skincare brands." },
-  "soda stream": { status: "boycott", brand: "SodaStream", parent: "PepsiCo", reason: "Previously operated factory in occupied territories.", alternatives: "Use traditional carbonation methods or local brands." },
-  "caterpillar": { status: "boycott", brand: "Caterpillar", parent: "Caterpillar Inc.", reason: "Equipment used for demolition of Palestinian homes.", alternatives: "Support companies not involved in demolitions." },
-};
-
-const statusConfig = {
-  boycott: { icon: ShieldAlert, label: "⛔ Boycott", bgClass: "bg-destructive/10", textClass: "text-destructive", borderClass: "border-destructive/30" },
-  safe: { icon: ShieldCheck, label: "✅ Not on Boycott List", bgClass: "bg-emerald-mid/10", textClass: "text-emerald-mid", borderClass: "border-emerald-mid/30" },
-  unknown: { icon: Search, label: "❓ Not Found", bgClass: "bg-accent/20", textClass: "text-accent-foreground", borderClass: "border-accent/30" },
-};
+const categories = ["All", ...Array.from(new Set(boycottDirectory.map(e => e.category)))];
+const levels: ("all" | BoycottLevel)[] = ["all", "very high", "high", "medium", "low"];
 
 const BoycottScannerPage = () => {
   const navigate = useNavigate();
   const [query, setQuery] = useState("");
   const [scanning, setScanning] = useState(false);
-  const [result, setResult] = useState<BoycottResult | null>(null);
+  const [results, setResults] = useState<BoycottEntry[] | null>(null);
+  const [selectedCategory, setSelectedCategory] = useState("All");
+  const [selectedLevel, setSelectedLevel] = useState<"all" | BoycottLevel>("all");
+  const [showFilters, setShowFilters] = useState(false);
+  const [expandedId, setExpandedId] = useState<string | null>(null);
 
   const handleScan = () => {
     if (!query.trim()) return;
     setScanning(true);
-    setResult(null);
+    setResults(null);
     setTimeout(() => {
-      const key = query.toLowerCase().trim();
-      const found = Object.entries(BOYCOTT_DATABASE).find(([k]) => key.includes(k) || k.includes(key));
-      if (found) {
-        setResult(found[1]);
-      } else {
-        setResult({
-          status: "safe",
-          brand: query.trim(),
-          parent: "Unknown",
-          reason: "This brand/product was not found on the BDS boycott list. Always verify with official BDS sources.",
-        });
-      }
+      const found = searchBoycottDirectory(query);
+      setResults(found);
       setScanning(false);
-    }, 1500);
+    }, 800);
   };
 
+  const browsableList = useMemo(() => {
+    let list = boycottDirectory;
+    if (selectedCategory !== "All") {
+      list = list.filter(e => e.category === selectedCategory);
+    }
+    if (selectedLevel !== "all") {
+      list = list.filter(e => e.level === selectedLevel);
+    }
+    return list;
+  }, [selectedCategory, selectedLevel]);
+
+  const displayList = results !== null ? results : browsableList;
+
   return (
-    <div className="min-h-screen">
-      <div className="bg-gradient-to-br from-red-900 via-red-800 to-red-900 px-4 pb-8 pt-12 islamic-pattern">
-        <button onClick={() => navigate("/")} className="mb-4 flex items-center gap-2 text-primary-foreground/80">
+    <div className="min-h-screen bg-background">
+      {/* Header */}
+      <div className="bg-gradient-to-br from-red-900 via-red-800 to-red-900 px-4 pb-8 pt-12">
+        <button onClick={() => navigate("/")} className="mb-4 flex items-center gap-2 text-white/80">
           <ArrowLeft size={20} />
           <span className="text-sm">Back</span>
         </button>
-        <h1 className="text-2xl font-bold text-primary-foreground">Boycott Scanner</h1>
-        <p className="mt-1 text-sm text-primary-foreground/70">Support Palestine 🇵🇸 — Check products & brands</p>
+        <h1 className="text-2xl font-bold text-white">Boycott Scanner</h1>
+        <p className="mt-1 text-sm text-white/70">Support Palestine 🇵🇸 — Check products & brands</p>
+        <p className="mt-0.5 text-xs text-white/50">{boycottDirectory.length} brands tracked</p>
       </div>
 
-      <div className="px-4 -mt-4 pb-6">
-        {/* Search Area */}
-        <div className="rounded-2xl bg-card p-5 shadow-sm">
+      <div className="px-4 -mt-4 pb-24 space-y-4">
+        {/* Search */}
+        <div className="rounded-2xl bg-card p-4 shadow-sm">
           <div className="flex gap-2">
             <input
               type="text"
               value={query}
-              onChange={(e) => setQuery(e.target.value)}
+              onChange={(e) => { setQuery(e.target.value); if (!e.target.value.trim()) setResults(null); }}
               onKeyDown={(e) => e.key === "Enter" && handleScan()}
-              placeholder="Enter brand or product name..."
+              placeholder="Search brand, product, or sub-brand..."
               className="flex-1 rounded-xl border border-input bg-background px-4 py-3 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary"
             />
           </div>
           <button
             onClick={handleScan}
             disabled={scanning || !query.trim()}
-            className="mt-3 w-full rounded-xl bg-gradient-to-r from-red-700 to-red-900 py-3 font-medium text-primary-foreground shadow-md transition-all active:scale-95 disabled:opacity-50"
+            className="mt-3 w-full rounded-xl bg-gradient-to-r from-red-700 to-red-900 py-3 font-medium text-white shadow-md transition-all active:scale-95 disabled:opacity-50"
           >
             {scanning ? (
               <span className="flex items-center justify-center gap-2">
@@ -99,60 +85,193 @@ const BoycottScannerPage = () => {
           </button>
         </div>
 
-        {/* Result */}
-        {result && (
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            className={`mt-4 rounded-2xl border ${statusConfig[result.status].borderClass} ${statusConfig[result.status].bgClass} p-5`}
-          >
-            <div className="flex items-center gap-3">
-              {(() => {
-                const Icon = statusConfig[result.status].icon;
-                return <Icon size={28} className={statusConfig[result.status].textClass} />;
-              })()}
-              <div>
-                <p className={`text-lg font-bold ${statusConfig[result.status].textClass}`}>
-                  {statusConfig[result.status].label}
-                </p>
-                <p className="font-medium text-foreground">{result.brand}</p>
-                {result.parent !== "Unknown" && (
-                  <p className="text-xs text-muted-foreground">Parent: {result.parent}</p>
-                )}
+        {/* Search result status */}
+        {results !== null && (
+          <div className="text-center">
+            {results.length === 0 ? (
+              <div className="rounded-2xl border border-emerald-500/30 bg-emerald-500/10 p-5 text-center">
+                <ShieldCheck size={32} className="mx-auto mb-2 text-emerald-500" />
+                <p className="font-semibold text-emerald-600 dark:text-emerald-400">Not Found on Boycott List</p>
+                <p className="mt-1 text-xs text-muted-foreground">"{query}" was not found. Always verify with official BDS sources.</p>
               </div>
-            </div>
-            <p className="mt-3 text-sm leading-relaxed text-muted-foreground">{result.reason}</p>
-            {result.alternatives && (
-              <div className="mt-3 rounded-lg bg-secondary/50 p-3">
-                <p className="text-xs font-semibold text-foreground">💡 Alternatives</p>
-                <p className="mt-1 text-xs text-muted-foreground">{result.alternatives}</p>
-              </div>
+            ) : (
+              <p className="text-sm text-muted-foreground">
+                Found <span className="font-semibold text-foreground">{results.length}</span> result{results.length !== 1 ? "s" : ""} for "{query}"
+              </p>
             )}
-          </motion.div>
+          </div>
         )}
 
-        {/* Boycott List Preview */}
-        <div className="mt-6 rounded-xl bg-card p-5 shadow-sm">
+        {/* Filters (only in browse mode) */}
+        {results === null && (
+          <div>
+            <button
+              onClick={() => setShowFilters(!showFilters)}
+              className="flex items-center gap-2 text-sm text-muted-foreground"
+            >
+              <Filter size={14} />
+              Filters
+              <ChevronDown size={14} className={`transition-transform ${showFilters ? "rotate-180" : ""}`} />
+            </button>
+            <AnimatePresence>
+              {showFilters && (
+                <motion.div
+                  initial={{ height: 0, opacity: 0 }}
+                  animate={{ height: "auto", opacity: 1 }}
+                  exit={{ height: 0, opacity: 0 }}
+                  className="overflow-hidden"
+                >
+                  <div className="mt-2 space-y-2">
+                    <div>
+                      <p className="text-xs font-medium text-muted-foreground mb-1">Category</p>
+                      <div className="flex flex-wrap gap-1.5">
+                        {categories.map(c => (
+                          <button
+                            key={c}
+                            onClick={() => setSelectedCategory(c)}
+                            className={`rounded-full px-3 py-1 text-xs font-medium transition-all ${
+                              selectedCategory === c
+                                ? "bg-primary text-primary-foreground"
+                                : "bg-secondary text-secondary-foreground"
+                            }`}
+                          >
+                            {c}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                    <div>
+                      <p className="text-xs font-medium text-muted-foreground mb-1">Risk Level</p>
+                      <div className="flex flex-wrap gap-1.5">
+                        {levels.map(l => (
+                          <button
+                            key={l}
+                            onClick={() => setSelectedLevel(l)}
+                            className={`rounded-full px-3 py-1 text-xs font-medium capitalize transition-all ${
+                              selectedLevel === l
+                                ? "bg-primary text-primary-foreground"
+                                : "bg-secondary text-secondary-foreground"
+                            }`}
+                          >
+                            {l === "all" ? "All Levels" : l}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
+        )}
+
+        {/* Brand List */}
+        <div className="space-y-3">
+          {displayList.map((entry) => {
+            const config = getLevelConfig(entry.level);
+            const isExpanded = expandedId === entry.id;
+            const subBrandNames = entry.subBrands?.map(sb => typeof sb === "string" ? sb : sb.name) || [];
+            const relatedNames = entry.related?.map(r => typeof r === "string" ? r : r.name) || [];
+
+            return (
+              <motion.div
+                key={entry.id}
+                layout
+                className={`rounded-2xl border ${config.border} ${config.bg} overflow-hidden`}
+              >
+                <button
+                  onClick={() => setExpandedId(isExpanded ? null : entry.id)}
+                  className="w-full p-4 text-left"
+                >
+                  <div className="flex items-center gap-3">
+                    {entry.logo ? (
+                      <img
+                        src={entry.logo}
+                        alt={entry.name}
+                        className="h-10 w-10 rounded-lg object-contain bg-white p-1"
+                        onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
+                      />
+                    ) : (
+                      <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-muted">
+                        <ShieldAlert size={20} className={config.color} />
+                      </div>
+                    )}
+                    <div className="flex-1 min-w-0">
+                      <p className="font-semibold text-foreground truncate">{entry.name}</p>
+                      <div className="flex items-center gap-2 mt-0.5">
+                        <span className={`text-xs font-medium ${config.color}`}>{config.label}</span>
+                        <span className="text-xs text-muted-foreground">· {entry.country}</span>
+                      </div>
+                    </div>
+                    <ChevronDown size={16} className={`text-muted-foreground transition-transform ${isExpanded ? "rotate-180" : ""}`} />
+                  </div>
+                </button>
+
+                <AnimatePresence>
+                  {isExpanded && (
+                    <motion.div
+                      initial={{ height: 0, opacity: 0 }}
+                      animate={{ height: "auto", opacity: 1 }}
+                      exit={{ height: 0, opacity: 0 }}
+                      className="overflow-hidden"
+                    >
+                      <div className="px-4 pb-4 space-y-3">
+                        <p className="text-sm leading-relaxed text-muted-foreground">{entry.reason}</p>
+
+                        <div className="flex flex-wrap gap-1.5">
+                          <span className="rounded-full bg-secondary px-2.5 py-0.5 text-[10px] font-medium text-secondary-foreground">
+                            {entry.category}
+                          </span>
+                        </div>
+
+                        {subBrandNames.length > 0 && (
+                          <div>
+                            <p className="text-xs font-semibold text-foreground mb-1">Sub-brands ({subBrandNames.length})</p>
+                            <div className="flex flex-wrap gap-1.5">
+                              {subBrandNames.map(name => (
+                                <span key={name} className="rounded-full border border-destructive/20 bg-destructive/5 px-2.5 py-0.5 text-[10px] font-medium text-destructive">
+                                  {name}
+                                </span>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+
+                        {relatedNames.length > 0 && (
+                          <div>
+                            <p className="text-xs font-semibold text-foreground mb-1">Related companies</p>
+                            <div className="flex flex-wrap gap-1.5">
+                              {relatedNames.map(name => (
+                                <span key={name} className="rounded-full border border-muted-foreground/20 bg-muted px-2.5 py-0.5 text-[10px] font-medium text-muted-foreground">
+                                  {name}
+                                </span>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+
+                        {entry.alternatives && entry.alternatives.length > 0 && (
+                          <div className="rounded-lg bg-emerald-500/10 p-3">
+                            <p className="text-xs font-semibold text-emerald-600 dark:text-emerald-400">💡 Alternatives</p>
+                            <p className="mt-1 text-xs text-muted-foreground">{entry.alternatives.join(", ")}</p>
+                          </div>
+                        )}
+                      </div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </motion.div>
+            );
+          })}
+        </div>
+
+        {/* Info */}
+        <div className="rounded-xl bg-card p-5 shadow-sm">
           <h3 className="font-semibold text-foreground mb-3">🇵🇸 Why Boycott?</h3>
           <p className="text-sm text-muted-foreground leading-relaxed">
             The BDS (Boycott, Divestment, Sanctions) movement works to end international support for apartheid 
             and oppression of Palestinians. By choosing where to spend your money, you can make a difference.
           </p>
-        </div>
-
-        <div className="mt-4 rounded-xl bg-card p-5 shadow-sm">
-          <h3 className="font-semibold text-foreground mb-3">Common Brands on the List</h3>
-          <div className="flex flex-wrap gap-2">
-            {Object.values(BOYCOTT_DATABASE).filter(b => b.status === "boycott").map((b) => (
-              <button
-                key={b.brand}
-                onClick={() => { setQuery(b.brand); }}
-                className="rounded-full border border-destructive/20 bg-destructive/5 px-3 py-1 text-xs font-medium text-destructive transition-all hover:bg-destructive/10"
-              >
-                {b.brand}
-              </button>
-            ))}
-          </div>
         </div>
       </div>
     </div>
