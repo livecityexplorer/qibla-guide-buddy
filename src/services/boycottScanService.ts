@@ -72,9 +72,7 @@ function extractProduct(data: any, source: ProductInfo["source"]): ProductInfo |
 export async function lookupBarcode(barcode: string): Promise<ProductInfo | null> {
   for (const { base, source } of API_SOURCES) {
     try {
-      const res = await fetch(`${base}/${barcode}.json`, {
-        headers: { "User-Agent": "MuslimCompanionApp/1.0" },
-      });
+      const res = await fetch(`${base}/${barcode}.json`);
       if (!res.ok) continue;
       const data = await res.json();
       if (data.status === 1) {
@@ -95,21 +93,19 @@ export async function lookupBarcode(barcode: string): Promise<ProductInfo | null
 export async function searchProductsByName(query: string): Promise<ProductInfo[]> {
   const results: ProductInfo[] = [];
   const searchApis = [
-    { base: "https://world.openfoodfacts.org/cgi/search.pl", source: "openfoodfacts" as const },
-    { base: "https://world.openbeautyfacts.org/cgi/search.pl", source: "openbeautyfacts" as const },
-    { base: "https://world.openpetfoodfacts.org/cgi/search.pl", source: "openpetfoodfacts" as const },
+    { base: "https://world.openfoodfacts.org/api/v2/search", source: "openfoodfacts" as const },
+    { base: "https://world.openbeautyfacts.org/api/v2/search", source: "openbeautyfacts" as const },
+    { base: "https://world.openpetfoodfacts.org/api/v2/search", source: "openpetfoodfacts" as const },
   ];
 
   const fetches = searchApis.map(async ({ base, source }) => {
     try {
-      const url = `${base}?search_terms=${encodeURIComponent(query)}&search_simple=1&action=process&json=1&page_size=10`;
-      const res = await fetch(url, {
-        headers: { "User-Agent": "MuslimCompanionApp/1.0" },
-      });
+      const url = `${base}?search_terms=${encodeURIComponent(query)}&page_size=10&fields=code,product_name,product_name_en,brands,manufacturing_places,manufacturer,categories,image_url,image_front_url,image_front_small_url,ingredients_text,ingredients_text_en,origins,countries,stores,nutriscore_grade,nova_group,quantity,packaging,labels`;
+      const res = await fetch(url);
       if (!res.ok) return [];
       const data = await res.json();
       const products = (data.products || [])
-        .map((p: any) => extractProduct({ product: p }, source))
+        .map((p: any) => extractProduct({ product: { ...p, code: p.code } }, source))
         .filter(Boolean) as ProductInfo[];
       return products;
     } catch {
