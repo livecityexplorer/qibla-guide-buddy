@@ -153,18 +153,24 @@ JazakAllah Khair`;
               </div>
             )}
             <div className="flex-1 min-w-0">
-              <h2 className="text-lg font-bold text-foreground">{product.name}</h2>
+              <div className="flex items-center gap-2">
+                <h2 className="text-lg font-bold text-foreground">{product.name}</h2>
+                {product.productType === "cosmetic" && (
+                  <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-purple-500/10 text-purple-600 font-semibold shrink-0">💄 Cosmetic</span>
+                )}
+              </div>
               <p className="text-sm text-muted-foreground">{product.brand}</p>
               <button onClick={copyBarcode} className="mt-1 flex items-center gap-1 text-xs text-muted-foreground">
                 <Copy size={10} /> {copied ? "Copied!" : product.barcode}
               </button>
-              {product.categories.length > 0 && (
-                <div className="flex flex-wrap gap-1 mt-2">
-                  {product.categories.slice(0, 3).map(c => (
-                    <span key={c} className="text-[10px] px-2 py-0.5 rounded-full bg-muted text-muted-foreground">{c}</span>
-                  ))}
-                </div>
-              )}
+              <div className="flex flex-wrap gap-1 mt-2">
+                {product.source === "openbeautyfacts" && (
+                  <span className="text-[10px] px-2 py-0.5 rounded-full bg-accent/10 text-accent-foreground">Open Beauty Facts</span>
+                )}
+                {product.categories.slice(0, 3).map(c => (
+                  <span key={c} className="text-[10px] px-2 py-0.5 rounded-full bg-muted text-muted-foreground">{c}</span>
+                ))}
+              </div>
             </div>
           </div>
         </div>
