@@ -29,12 +29,13 @@ function parseIngredients(text: string): string[] {
     .filter(s => s.length > 1 && s.length < 80);
 }
 
-function generateSummary(analysis: { ingredient: string; status: HalalStatus }[], overallStatus: HalalStatus): string {
+function generateSummary(analysis: { ingredient: string; status: HalalStatus }[], overallStatus: HalalStatus, productType: "food" | "cosmetic" | "unknown" = "food"): string {
   const haramIngredients = analysis.filter(a => a.status === "haram").map(a => a.ingredient);
   const mushboohIngredients = analysis.filter(a => a.status === "mushbooh").map(a => a.ingredient);
+  const typeLabel = productType === "cosmetic" ? "use" : "consumption";
 
   if (overallStatus === "haram") {
-    return `Contains Haram ingredient(s): ${haramIngredients.join(", ")}. Not suitable for Muslim consumption.`;
+    return `Contains Haram ingredient(s): ${haramIngredients.join(", ")}. Not suitable for Muslim ${typeLabel}.`;
   }
   if (overallStatus === "mushbooh") {
     if (haramIngredients.length > 0) {
@@ -42,7 +43,21 @@ function generateSummary(analysis: { ingredient: string; status: HalalStatus }[]
     }
     return `Contains doubtful ingredient(s): ${mushboohIngredients.join(", ")}. Verify source with manufacturer.`;
   }
-  return "All identified ingredients appear to be Halal. Always verify with certification bodies for full assurance.";
+  return `All identified ingredients appear to be Halal. Always verify with certification bodies for full assurance.`;
+}
+
+function detectProductType(categories: string[], name: string): "food" | "cosmetic" | "unknown" {
+  const combined = `${name} ${categories.join(" ")}`.toLowerCase();
+  const cosmeticKeywords = [
+    "cosmetic", "beauty", "skincare", "skin care", "makeup", "make-up", "lipstick",
+    "shampoo", "conditioner", "soap", "lotion", "cream", "serum", "moisturizer",
+    "sunscreen", "deodorant", "perfume", "fragrance", "nail polish", "mascara",
+    "foundation", "concealer", "blush", "eyeshadow", "eyeliner", "body wash",
+    "face wash", "cleanser", "toner", "hair care", "toothpaste", "mouthwash",
+    "body lotion", "hand cream", "lip balm", "shower gel",
+  ];
+  if (cosmeticKeywords.some(kw => combined.includes(kw))) return "cosmetic";
+  return "unknown";
 }
 
 // Check product name and categories for pork indicators
