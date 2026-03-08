@@ -1,52 +1,71 @@
 import { useMemo, useState, useEffect } from "react";
 import { motion } from "framer-motion";
-import { Clock, BookOpen, Compass, ScanLine, MapPin, Moon, Star, ShieldAlert, CloudSun, MapPinned, Calendar } from "lucide-react";
+import { Clock, BookOpen, Compass, ScanLine, MapPin, Moon, Star, ShieldAlert, CloudSun, MapPinned, Calendar, RotateCcw } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import heroImage from "@/assets/hero-mosque.jpg";
+import { getDailyHadith } from "@/services/hadithService";
 
 const PRAYER_TIMES = [
-  { name: "Fajr", time: "05:23", icon: "🌅" },
-  { name: "Dhuhr", time: "12:30", icon: "☀️" },
-  { name: "Asr", time: "15:45", icon: "🌤" },
-  { name: "Maghrib", time: "18:12", icon: "🌅" },
-  { name: "Isha", time: "19:42", icon: "🌙" },
+  { nameKey: "prayer.fajr", time: "05:23", icon: "🌅" },
+  { nameKey: "prayer.dhuhr", time: "12:30", icon: "☀️" },
+  { nameKey: "prayer.asr", time: "15:45", icon: "🌤" },
+  { nameKey: "prayer.maghrib", time: "18:12", icon: "🌅" },
+  { nameKey: "prayer.isha", time: "19:42", icon: "🌙" },
 ];
 
-const QUICK_ACTIONS = [
-  { label: "Prayer Times", icon: Clock, path: "/prayer" },
-  { label: "Qibla", icon: Compass, path: "/qibla" },
-  { label: "Quran", icon: BookOpen, path: "/quran" },
-  { label: "Halal Scanner", icon: ScanLine, path: "/scanner" },
-  { label: "Ramadan", icon: Star, path: "/ramadan" },
-  { label: "Boycott", icon: ShieldAlert, path: "/boycott" },
-  { label: "Nearby", icon: MapPin, path: "/nearby" },
-  { label: "Hadith", icon: Moon, path: "/hadith" },
+const DHIKR_OPTIONS = [
+  { key: "subhanAllah", arabic: "سبحان الله", target: 33 },
+  { key: "alhamdulillah", arabic: "الحمد لله", target: 33 },
+  { key: "allahuAkbar", arabic: "الله أكبر", target: 34 },
+  { key: "laIlahaIllallah", arabic: "لا إله إلا الله", target: 100 },
+  { key: "astaghfirullah", arabic: "أستغفر الله", target: 100 },
 ];
 
-interface WeatherData {
-  temp: number;
-  description: string;
-  icon: string;
-}
+// Daily verse - rotates by day
+const DAILY_VERSES = [
+  { arabic: "وَمَن يَتَوَكَّلْ عَلَى ٱللَّهِ فَهُوَ حَسْبُهُۥ", en: "And whoever relies upon Allah – then He is sufficient for him.", ref: "Surah At-Talaq 65:3" },
+  { arabic: "إِنَّ مَعَ ٱلْعُسْرِ يُسْرًا", en: "Indeed, with hardship comes ease.", ref: "Surah Ash-Sharh 94:6" },
+  { arabic: "وَلَسَوْفَ يُعْطِيكَ رَبُّكَ فَتَرْضَىٰ", en: "And your Lord is going to give you, and you will be satisfied.", ref: "Surah Ad-Duha 93:5" },
+  { arabic: "فَٱذْكُرُونِىٓ أَذْكُرْكُمْ", en: "So remember Me; I will remember you.", ref: "Surah Al-Baqarah 2:152" },
+  { arabic: "وَهُوَ مَعَكُمْ أَيْنَ مَا كُنتُمْ", en: "And He is with you wherever you are.", ref: "Surah Al-Hadid 57:4" },
+  { arabic: "رَبِّ ٱشْرَحْ لِى صَدْرِى", en: "My Lord, expand for me my breast [with assurance].", ref: "Surah Ta-Ha 20:25" },
+  { arabic: "وَلَا تَيْـَٔسُوا۟ مِن رَّوْحِ ٱللَّهِ", en: "And do not despair of the mercy of Allah.", ref: "Surah Yusuf 12:87" },
+];
+
+interface WeatherData { temp: number; description: string; icon: string; }
 
 const getIslamicDate = () => {
   try {
-    const formatter = new Intl.DateTimeFormat("en-u-ca-islamic-umalqura", {
-      day: "numeric",
-      month: "long",
-      year: "numeric",
-    });
+    const formatter = new Intl.DateTimeFormat("en-u-ca-islamic-umalqura", { day: "numeric", month: "long", year: "numeric" });
     return formatter.format(new Date());
-  } catch {
-    return "";
-  }
+  } catch { return ""; }
 };
 
 const HomePage = () => {
   const navigate = useNavigate();
-  const [location, setLocation] = useState<string>("Loading...");
+  const { t } = useTranslation();
+  const [location, setLocation] = useState<string>(t("common.loading"));
   const [weather, setWeather] = useState<WeatherData | null>(null);
   const islamicDate = useMemo(() => getIslamicDate(), []);
+  const dailyHadith = useMemo(() => getDailyHadith(), []);
+  const dayOfYear = useMemo(() => Math.floor((Date.now() - new Date(new Date().getFullYear(), 0, 0).getTime()) / 86400000), []);
+  const dailyVerse = DAILY_VERSES[dayOfYear % DAILY_VERSES.length];
+
+  // Dhikr counter state
+  const [selectedDhikr, setSelectedDhikr] = useState(0);
+  const [dhikrCount, setDhikrCount] = useState(0);
+
+  const QUICK_ACTIONS = [
+    { label: t("home.prayerTimes"), icon: Clock, path: "/prayer" },
+    { label: t("nav.qibla"), icon: Compass, path: "/qibla" },
+    { label: t("nav.quran"), icon: BookOpen, path: "/quran" },
+    { label: t("nav.halalScanner"), icon: ScanLine, path: "/scanner" },
+    { label: t("nav.ramadan"), icon: Star, path: "/ramadan" },
+    { label: t("nav.boycott"), icon: ShieldAlert, path: "/boycott" },
+    { label: t("nav.nearby"), icon: MapPin, path: "/nearby" },
+    { label: t("nav.hadith"), icon: Moon, path: "/hadith" },
+  ];
 
   const nextPrayer = useMemo(() => {
     const now = new Date();
@@ -63,47 +82,33 @@ const HomePage = () => {
       navigator.geolocation.getCurrentPosition(
         async (pos) => {
           const { latitude, longitude } = pos.coords;
-          // Reverse geocode
           try {
-            const geoRes = await fetch(
-              `https://api.open-meteo.com/v1/forecast?latitude=${latitude}&longitude=${longitude}&current=temperature_2m,weather_code&timezone=auto`
-            );
+            const geoRes = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${latitude}&longitude=${longitude}&current=temperature_2m,weather_code&timezone=auto`);
             const geoData = await geoRes.json();
             const temp = Math.round(geoData.current?.temperature_2m || 0);
             const code = geoData.current?.weather_code || 0;
-            const desc = getWeatherDescription(code);
-            const icon = getWeatherIcon(code);
-            setWeather({ temp, description: desc, icon });
-          } catch {
-            setWeather(null);
-          }
-          // Get city name
+            setWeather({ temp, description: getWeatherDescription(code), icon: getWeatherIcon(code) });
+          } catch { setWeather(null); }
           try {
-            const nameRes = await fetch(
-              `https://geocoding-api.open-meteo.com/v1/reverse?latitude=${latitude}&longitude=${longitude}&count=1`
-            );
+            const nameRes = await fetch(`https://geocoding-api.open-meteo.com/v1/reverse?latitude=${latitude}&longitude=${longitude}&count=1`);
             const nameData = await nameRes.json();
-            if (nameData.results?.[0]) {
-              setLocation(`${nameData.results[0].name}, ${nameData.results[0].country}`);
-            } else {
-              setLocation("Your Location");
-            }
-          } catch {
-            setLocation("Your Location");
-          }
+            setLocation(nameData.results?.[0] ? `${nameData.results[0].name}, ${nameData.results[0].country}` : t("common.yourLocation"));
+          } catch { setLocation(t("common.yourLocation")); }
         },
-        () => setLocation("Location unavailable")
+        () => setLocation(t("common.locationUnavailable"))
       );
     }
-  }, []);
+  }, [t]);
 
   const greeting = useMemo(() => {
     const h = new Date().getHours();
-    if (h < 5) return "Good Night";
-    if (h < 12) return "Good Morning";
-    if (h < 17) return "Good Afternoon";
-    return "Good Evening";
-  }, []);
+    if (h < 5) return t("home.greetingNight");
+    if (h < 12) return t("home.greetingMorning");
+    if (h < 17) return t("home.greetingAfternoon");
+    return t("home.greetingEvening");
+  }, [t]);
+
+  const currentDhikr = DHIKR_OPTIONS[selectedDhikr];
 
   return (
     <div className="min-h-screen gradient-dark">
@@ -112,22 +117,12 @@ const HomePage = () => {
         <img src={heroImage} alt="Mosque at sunset" className="h-full w-full object-cover opacity-60" />
         <div className="absolute inset-0 bg-gradient-to-b from-background/30 via-transparent to-background" />
         <div className="absolute inset-0 bg-gradient-to-r from-background/60 to-transparent" />
-
         <div className="absolute bottom-5 left-5 right-5">
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6 }}
-          >
+          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.6 }}>
             <p className="text-sm font-medium text-gold font-arabic">بِسْمِ ٱللَّهِ ٱلرَّحْمَـٰنِ ٱلرَّحِيمِ</p>
-            <h1 className="mt-1 text-2xl font-bold text-foreground">
-              {greeting} 👋
-            </h1>
+            <h1 className="mt-1 text-2xl font-bold text-foreground">{greeting} 👋</h1>
             <div className="mt-1 flex items-center gap-3 text-sm text-muted-foreground">
-              <span className="flex items-center gap-1">
-                <MapPinned size={13} className="text-primary" />
-                {location}
-              </span>
+              <span className="flex items-center gap-1"><MapPinned size={13} className="text-primary" />{location}</span>
             </div>
           </motion.div>
         </div>
@@ -135,17 +130,10 @@ const HomePage = () => {
 
       <div className="px-4 -mt-3 space-y-5 pb-6">
         {/* Weather + Islamic Date Row */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.15 }}
-          className="flex gap-3"
-        >
-          {/* Weather */}
+        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.15 }} className="flex gap-3">
           <div className="flex-1 glass-card rounded-2xl p-4">
             <div className="flex items-center gap-2 text-muted-foreground text-xs font-medium uppercase tracking-wider mb-2">
-              <CloudSun size={14} className="text-primary" />
-              Weather
+              <CloudSun size={14} className="text-primary" />{t("home.weather")}
             </div>
             {weather ? (
               <div className="flex items-center gap-2">
@@ -155,39 +143,25 @@ const HomePage = () => {
                   <p className="text-xs text-muted-foreground">{weather.description}</p>
                 </div>
               </div>
-            ) : (
-              <p className="text-sm text-muted-foreground">Loading...</p>
-            )}
+            ) : <p className="text-sm text-muted-foreground">{t("common.loading")}</p>}
           </div>
-
-          {/* Islamic Date */}
           <div className="flex-1 glass-card rounded-2xl p-4">
             <div className="flex items-center gap-2 text-muted-foreground text-xs font-medium uppercase tracking-wider mb-2">
-              <Calendar size={14} className="text-primary" />
-              Islamic Date
+              <Calendar size={14} className="text-primary" />{t("home.islamicDate")}
             </div>
             <p className="text-sm font-semibold text-foreground leading-snug">{islamicDate}</p>
-            <p className="text-xs text-muted-foreground mt-1">
-              {new Date().toLocaleDateString("en", { weekday: "long", month: "short", day: "numeric" })}
-            </p>
+            <p className="text-xs text-muted-foreground mt-1">{new Date().toLocaleDateString("en", { weekday: "long", month: "short", day: "numeric" })}</p>
           </div>
         </motion.div>
 
         {/* Next Prayer Card */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.25 }}
-          className="relative overflow-hidden rounded-2xl gradient-emerald p-5 glow-emerald"
-        >
+        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.25 }} className="relative overflow-hidden rounded-2xl gradient-emerald p-5 glow-emerald">
           <div className="absolute inset-0 islamic-pattern opacity-30" />
           <div className="relative">
-            <p className="text-xs font-medium uppercase tracking-wider text-primary-foreground/70">
-              Next Prayer
-            </p>
+            <p className="text-xs font-medium uppercase tracking-wider text-primary-foreground/70">{t("home.nextPrayer")}</p>
             <div className="mt-2 flex items-end justify-between">
               <div>
-                <h2 className="text-3xl font-bold text-primary-foreground">{nextPrayer.name}</h2>
+                <h2 className="text-3xl font-bold text-primary-foreground">{t(nextPrayer.nameKey)}</h2>
                 <p className="text-lg text-primary-foreground/80">{nextPrayer.time}</p>
               </div>
               <span className="text-4xl">{nextPrayer.icon}</span>
@@ -195,55 +169,89 @@ const HomePage = () => {
           </div>
         </motion.div>
 
+        {/* Verse of the Day */}
+        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.35 }} className="rounded-2xl glass-card p-5 border-glow-gold">
+          <p className="text-xs font-medium uppercase tracking-wider text-primary mb-3">{t("home.verseOfDay")}</p>
+          <p className="text-lg leading-relaxed text-foreground/90 font-arabic text-right">"{dailyVerse.arabic}"</p>
+          <p className="mt-2 text-sm text-muted-foreground italic">"{dailyVerse.en}"</p>
+          <p className="mt-1 text-xs text-primary/70">— {dailyVerse.ref}</p>
+        </motion.div>
+
+        {/* Hadith of the Day */}
+        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.4 }} className="rounded-2xl glass-card p-5">
+          <p className="text-xs font-medium uppercase tracking-wider text-accent mb-3">{t("home.hadithOfDay")}</p>
+          <p className="text-sm leading-relaxed text-foreground/90">"{dailyHadith.text}"</p>
+          <div className="mt-3 border-t border-border pt-3">
+            <p className="text-xs font-medium text-primary">{dailyHadith.narrator}</p>
+            <p className="text-xs text-muted-foreground">{dailyHadith.source}</p>
+          </div>
+        </motion.div>
+
+        {/* Dhikr Counter */}
+        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.45 }} className="rounded-2xl glass-card-strong p-5">
+          <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground mb-3">{t("home.dhikrCounter")}</p>
+          <div className="flex gap-2 overflow-x-auto mb-4 pb-1">
+            {DHIKR_OPTIONS.map((d, i) => (
+              <button
+                key={d.key}
+                onClick={() => { setSelectedDhikr(i); setDhikrCount(0); }}
+                className={`shrink-0 rounded-full px-3 py-1.5 text-xs font-medium transition-all ${
+                  i === selectedDhikr ? "gradient-gold text-primary-foreground" : "bg-secondary/50 text-muted-foreground"
+                }`}
+              >
+                {t(`dhikr.${d.key}`)}
+              </button>
+            ))}
+          </div>
+          <div className="flex flex-col items-center">
+            <p className="text-sm text-muted-foreground mb-1">{t(`dhikr.${currentDhikr.key}Meaning`)}</p>
+            <button
+              onClick={() => setDhikrCount((c) => c + 1)}
+              className="relative flex h-28 w-28 items-center justify-center rounded-full gradient-emerald glow-emerald active:scale-95 transition-transform"
+            >
+              <div className="text-center">
+                <p className="text-3xl font-bold text-primary-foreground">{dhikrCount}</p>
+                <p className="text-[10px] text-primary-foreground/70 font-arabic">{currentDhikr.arabic}</p>
+              </div>
+            </button>
+            <div className="flex items-center gap-4 mt-3">
+              <p className="text-xs text-muted-foreground">{t("home.target")}: {currentDhikr.target}</p>
+              <button onClick={() => setDhikrCount(0)} className="flex items-center gap-1 text-xs text-primary hover:text-primary/80">
+                <RotateCcw size={12} />{t("home.reset")}
+              </button>
+            </div>
+            {dhikrCount >= currentDhikr.target && (
+              <p className="mt-2 text-xs text-accent font-medium">✨ {t("home.target")} reached! MashaAllah!</p>
+            )}
+          </div>
+        </motion.div>
+
         {/* Today's Prayers */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.35 }}
-        >
-          <h3 className="mb-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-            Today's Prayers
-          </h3>
+        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.5 }}>
+          <h3 className="mb-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground">{t("home.todaysPrayers")}</h3>
           <div className="rounded-2xl glass-card-strong p-1">
             {PRAYER_TIMES.map((p, i) => (
-              <div
-                key={p.name}
-                className={`flex items-center justify-between py-3 px-3 rounded-xl transition-colors ${
-                  p.name === nextPrayer.name ? "bg-primary/10 border-glow-gold" : ""
-                } ${i < PRAYER_TIMES.length - 1 && p.name !== nextPrayer.name ? "border-b border-border/50" : ""}`}
-              >
+              <div key={p.nameKey} className={`flex items-center justify-between py-3 px-3 rounded-xl transition-colors ${
+                p.nameKey === nextPrayer.nameKey ? "bg-primary/10 border-glow-gold" : ""
+              } ${i < PRAYER_TIMES.length - 1 && p.nameKey !== nextPrayer.nameKey ? "border-b border-border/50" : ""}`}>
                 <div className="flex items-center gap-3">
                   <span className="text-lg">{p.icon}</span>
-                  <span className={`font-medium ${p.name === nextPrayer.name ? "text-primary" : "text-foreground"}`}>
-                    {p.name}
-                  </span>
+                  <span className={`font-medium ${p.nameKey === nextPrayer.nameKey ? "text-primary" : "text-foreground"}`}>{t(p.nameKey)}</span>
                 </div>
-                <span className={`font-semibold tabular-nums ${p.name === nextPrayer.name ? "text-primary" : "text-muted-foreground"}`}>
-                  {p.time}
-                </span>
+                <span className={`font-semibold tabular-nums ${p.nameKey === nextPrayer.nameKey ? "text-primary" : "text-muted-foreground"}`}>{p.time}</span>
               </div>
             ))}
           </div>
         </motion.div>
 
         {/* Quick Actions */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.45 }}
-        >
-          <h3 className="mb-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-            Quick Actions
-          </h3>
+        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.55 }}>
+          <h3 className="mb-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground">{t("home.quickActions")}</h3>
           <div className="grid grid-cols-4 gap-3">
             {QUICK_ACTIONS.map((action) => {
               const Icon = action.icon;
               return (
-                <button
-                  key={action.label}
-                  onClick={() => navigate(action.path)}
-                  className="group flex flex-col items-center gap-2 rounded-2xl glass-card p-3 transition-all hover:glow-gold active:scale-95"
-                >
+                <button key={action.label} onClick={() => navigate(action.path)} className="group flex flex-col items-center gap-2 rounded-2xl glass-card p-3 transition-all hover:glow-gold active:scale-95">
                   <div className="flex h-11 w-11 items-center justify-center rounded-full bg-primary/10 group-hover:bg-primary/20 transition-colors">
                     <Icon size={20} className="text-primary" />
                   </div>
@@ -252,23 +260,6 @@ const HomePage = () => {
               );
             })}
           </div>
-        </motion.div>
-
-        {/* Daily Verse */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.55 }}
-          className="rounded-2xl glass-card p-5 border-glow-gold"
-        >
-          <p className="text-xs font-medium uppercase tracking-wider text-primary mb-3">Daily Reminder</p>
-          <p className="text-sm leading-relaxed text-foreground/90 font-arabic text-lg">
-            "وَمَن يَتَوَكَّلْ عَلَى ٱللَّهِ فَهُوَ حَسْبُهُۥ"
-          </p>
-          <p className="mt-2 text-sm text-muted-foreground italic">
-            "And whoever relies upon Allah – then He is sufficient for him."
-          </p>
-          <p className="mt-1 text-xs text-primary/70">— Surah At-Talaq 65:3</p>
         </motion.div>
       </div>
     </div>
