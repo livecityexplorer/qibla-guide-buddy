@@ -13,7 +13,8 @@ export interface ProductResult {
   summary: string;
   confidence: "certified" | "high" | "analysis-based" | "low";
   analysis: { ingredient: string; info: any; status: HalalStatus }[];
-  source: "openfoodfacts" | "local" | "manual";
+  source: "openfoodfacts" | "openbeautyfacts" | "local" | "manual";
+  productType: "food" | "cosmetic" | "unknown";
 }
 
 const OFF_API = "https://world.openfoodfacts.org";
