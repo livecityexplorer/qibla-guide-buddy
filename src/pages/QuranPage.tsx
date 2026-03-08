@@ -98,7 +98,7 @@ const QuranPage = () => {
 
   const handlePlayAll = () => {
     if (!arabicData) return;
-    player.playAll(arabicData.ayahs, arabicData.englishName);
+    player.playAll(arabicData.ayahs, arabicData.englishName, arabicData.number);
   };
 
   // Save reading position on scroll/click

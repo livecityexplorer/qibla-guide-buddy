@@ -105,3 +105,8 @@ export async function getSurahAudio(surahNumber: number, reciter: string): Promi
 export function getAyahAudioUrl(ayahGlobalNumber: number, reciter: string = "ar.alafasy"): string {
   return `https://cdn.islamic.network/quran/audio/128/${reciter}/${ayahGlobalNumber}.mp3`;
 }
+
+// Get full surah audio URL from CDN (single continuous file)
+export function getSurahAudioUrl(surahNumber: number, reciter: string = "ar.alafasy"): string {
+  return `https://cdn.islamic.network/quran/audio-surah/128/${reciter}/${surahNumber}.mp3`;
+}

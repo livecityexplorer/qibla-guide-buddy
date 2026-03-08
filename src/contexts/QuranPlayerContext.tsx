@@ -1,15 +1,17 @@
 import React, { createContext, useContext, useState, useRef, useCallback, useEffect } from "react";
-import { getAyahAudioUrl, type Ayah } from "@/services/quranService";
+import { getSurahAudioUrl, getAyahAudioUrl, type Ayah } from "@/services/quranService";
 
 interface PlayerState {
   isPlaying: boolean;
   currentAyah: Ayah | null;
   currentSurahName: string;
+  currentSurahNumber: number | null;
   reciter: string;
   playlist: Ayah[];
   playlistIndex: number;
   duration: number;
   currentTime: number;
+  mode: "surah" | "ayah"; // surah = full file, ayah = single ayah
 }
 
 interface PlayerContextType extends PlayerState {
@@ -21,7 +23,7 @@ interface PlayerContextType extends PlayerState {
   prev: () => void;
   seek: (time: number) => void;
   setReciter: (id: string) => void;
-  playAll: (ayahs: Ayah[], surahName: string) => void;
+  playAll: (ayahs: Ayah[], surahName: string, surahNumber: number) => void;
 }
 
 const PlayerContext = createContext<PlayerContextType | null>(null);
@@ -33,32 +35,21 @@ export function useQuranPlayer() {
 }
 
 export function QuranPlayerProvider({ children }: { children: React.ReactNode }) {
-  // Dual audio elements for gapless playback that survives screen-off
-  const audioARef = useRef<HTMLAudioElement | null>(null);
-  const audioBRef = useRef<HTMLAudioElement | null>(null);
-  const activeAudioRef = useRef<"A" | "B">("A");
+  const audioRef = useRef<HTMLAudioElement | null>(null);
   const wakeLockRef = useRef<any>(null);
-
-  const getActiveAudio = useCallback(() => {
-    return activeAudioRef.current === "A" ? audioARef.current! : audioBRef.current!;
-  }, []);
-
-  const getInactiveAudio = useCallback(() => {
-    return activeAudioRef.current === "A" ? audioBRef.current! : audioARef.current!;
-  }, []);
-
   const [state, setState] = useState<PlayerState>({
     isPlaying: false,
     currentAyah: null,
     currentSurahName: "",
+    currentSurahNumber: null,
     reciter: localStorage.getItem("quran-reciter") || "ar.alafasy",
     playlist: [],
     playlistIndex: 0,
     duration: 0,
     currentTime: 0,
+    mode: "surah",
   });
 
-  // Wake Lock helpers
   const requestWakeLock = useCallback(async () => {
     try {
       if ("wakeLock" in navigator && !wakeLockRef.current) {
@@ -87,10 +78,10 @@ export function QuranPlayerProvider({ children }: { children: React.ReactNode })
     return () => document.removeEventListener("visibilitychange", onVisibilityChange);
   }, [state.isPlaying, requestWakeLock]);
 
-  const updateMediaSession = useCallback((ayah: Ayah, surahName: string) => {
+  const updateMediaSession = useCallback((surahName: string, ayahInfo?: string) => {
     if ("mediaSession" in navigator) {
       navigator.mediaSession.metadata = new MediaMetadata({
-        title: `Ayah ${ayah.numberInSurah}`,
+        title: ayahInfo || surahName,
         artist: "Holy Quran",
         album: surahName,
         artwork: [
@@ -108,9 +99,9 @@ export function QuranPlayerProvider({ children }: { children: React.ReactNode })
   }, []);
 
   const updatePositionState = useCallback(() => {
-    if ("mediaSession" in navigator) {
-      const audio = getActiveAudio();
-      if (audio && audio.duration && isFinite(audio.duration)) {
+    if ("mediaSession" in navigator && audioRef.current) {
+      const audio = audioRef.current;
+      if (audio.duration && isFinite(audio.duration)) {
         try {
           navigator.mediaSession.setPositionState({
             duration: audio.duration,
@@ -120,305 +111,135 @@ export function QuranPlayerProvider({ children }: { children: React.ReactNode })
         } catch {}
       }
     }
-  }, [getActiveAudio]);
+  }, []);
 
-  // Preload the next ayah into the inactive audio element
-  const preloadNext = useCallback((playlist: Ayah[], currentIndex: number, reciter: string) => {
-    const nextIndex = currentIndex + 1;
-    if (nextIndex < playlist.length) {
-      const nextAyah = playlist[nextIndex];
-      const inactive = getInactiveAudio();
-      if (inactive) {
-        inactive.src = getAyahAudioUrl(nextAyah.number, reciter);
-        inactive.preload = "auto";
-        inactive.load();
-      }
-    }
-  }, [getInactiveAudio]);
-
-  // Swap to the preloaded audio element and play immediately
-  const swapAndPlay = useCallback((nextAyah: Ayah, surahName: string) => {
-    const currentActive = getActiveAudio();
-    currentActive.pause();
-
-    // Swap active
-    activeAudioRef.current = activeAudioRef.current === "A" ? "B" : "A";
-    const newActive = getActiveAudio();
-
-    // Play the preloaded audio immediately - no src change needed, it's already loaded
-    newActive.play().catch(() => {});
-    updateMediaSession(nextAyah, surahName);
-  }, [getActiveAudio, updateMediaSession]);
-
-  // Setup both audio elements
+  // Create audio element once
   useEffect(() => {
-    const audioA = new Audio();
-    const audioB = new Audio();
-    audioA.preload = "auto";
-    audioB.preload = "auto";
-    audioARef.current = audioA;
-    audioBRef.current = audioB;
+    const audio = new Audio();
+    audio.preload = "auto";
+    audioRef.current = audio;
 
-    const setupAudioEvents = (audio: HTMLAudioElement) => {
-      audio.addEventListener("timeupdate", () => {
-        // Only update if this is the active audio
-        const active = activeAudioRef.current === "A" ? audioARef.current : audioBRef.current;
-        if (audio === active) {
-          setState((s) => ({ ...s, currentTime: audio.currentTime }));
-        }
+    audio.addEventListener("timeupdate", () => {
+      setState((s) => ({ ...s, currentTime: audio.currentTime }));
+    });
+    audio.addEventListener("loadedmetadata", () => {
+      setState((s) => ({ ...s, duration: audio.duration }));
+      updatePositionState();
+    });
+    audio.addEventListener("ended", () => {
+      setState((prev) => {
+        // In surah mode, audio naturally ends when the full surah finishes
+        updatePlaybackState(false);
+        releaseWakeLock();
+        return { ...prev, isPlaying: false };
       });
-
-      audio.addEventListener("loadedmetadata", () => {
-        const active = activeAudioRef.current === "A" ? audioARef.current : audioBRef.current;
-        if (audio === active) {
-          setState((s) => ({ ...s, duration: audio.duration }));
-        }
-      });
-
-      audio.addEventListener("ended", () => {
-        const active = activeAudioRef.current === "A" ? audioARef.current : audioBRef.current;
-        if (audio !== active) return; // Ignore events from inactive element
-
-        setState((prev) => {
-          const nextIndex = prev.playlistIndex + 1;
-          if (nextIndex < prev.playlist.length) {
-            const nextAyah = prev.playlist[nextIndex];
-            const inactive = activeAudioRef.current === "A" ? audioBRef.current! : audioARef.current!;
-
-            // Check if the inactive element is already preloaded with the right URL
-            const expectedUrl = getAyahAudioUrl(nextAyah.number, prev.reciter);
-            if (inactive.src === expectedUrl || inactive.src.endsWith(`/${nextAyah.number}.mp3`)) {
-              // Swap to preloaded element
-              audio.pause();
-              activeAudioRef.current = activeAudioRef.current === "A" ? "B" : "A";
-              inactive.play().catch(() => {});
-            } else {
-              // Fallback: load into inactive and swap
-              inactive.src = expectedUrl;
-              audio.pause();
-              activeAudioRef.current = activeAudioRef.current === "A" ? "B" : "A";
-              inactive.play().catch(() => {});
-            }
-
-            updateMediaSession(nextAyah, prev.currentSurahName);
-
-            // Preload the one after next
-            const afterNextIndex = nextIndex + 1;
-            if (afterNextIndex < prev.playlist.length) {
-              const afterNextAyah = prev.playlist[afterNextIndex];
-              // The now-inactive element (previously active) can be reused
-              audio.src = getAyahAudioUrl(afterNextAyah.number, prev.reciter);
-              audio.preload = "auto";
-              audio.load();
-            }
-
-            return { ...prev, currentAyah: nextAyah, playlistIndex: nextIndex, isPlaying: true };
-          }
-          updatePlaybackState(false);
-          releaseWakeLock();
-          return { ...prev, isPlaying: false };
-        });
-      });
-
-      audio.addEventListener("play", () => {
-        const active = activeAudioRef.current === "A" ? audioARef.current : audioBRef.current;
-        if (audio === active) {
-          setState((s) => ({ ...s, isPlaying: true }));
-          updatePlaybackState(true);
-          requestWakeLock();
-        }
-      });
-
-      audio.addEventListener("pause", () => {
-        const active = activeAudioRef.current === "A" ? audioARef.current : audioBRef.current;
-        if (audio === active) {
-          setState((s) => ({ ...s, isPlaying: false }));
-          updatePlaybackState(false);
-        }
-      });
-    };
-
-    setupAudioEvents(audioA);
-    setupAudioEvents(audioB);
+    });
+    audio.addEventListener("play", () => {
+      setState((s) => ({ ...s, isPlaying: true }));
+      updatePlaybackState(true);
+      requestWakeLock();
+    });
+    audio.addEventListener("pause", () => {
+      setState((s) => ({ ...s, isPlaying: false }));
+      updatePlaybackState(false);
+    });
 
     // MediaSession action handlers
     if ("mediaSession" in navigator) {
-      navigator.mediaSession.setActionHandler("play", () => {
-        const active = activeAudioRef.current === "A" ? audioARef.current! : audioBRef.current!;
-        active.play();
-      });
-      navigator.mediaSession.setActionHandler("pause", () => {
-        const active = activeAudioRef.current === "A" ? audioARef.current! : audioBRef.current!;
-        active.pause();
-      });
+      navigator.mediaSession.setActionHandler("play", () => audio.play());
+      navigator.mediaSession.setActionHandler("pause", () => audio.pause());
       navigator.mediaSession.setActionHandler("stop", () => {
-        audioA.pause(); audioA.src = "";
-        audioB.pause(); audioB.src = "";
-        setState((s) => ({ ...s, isPlaying: false, currentAyah: null, playlist: [], playlistIndex: 0 }));
+        audio.pause();
+        audio.src = "";
+        setState((s) => ({ ...s, isPlaying: false, currentAyah: null, currentSurahNumber: null, playlist: [], playlistIndex: 0 }));
         releaseWakeLock();
       });
       navigator.mediaSession.setActionHandler("seekto", (details) => {
-        const active = activeAudioRef.current === "A" ? audioARef.current! : audioBRef.current!;
-        if (details.seekTime != null) active.currentTime = details.seekTime;
+        if (details.seekTime != null) audio.currentTime = details.seekTime;
+        updatePositionState();
       });
       navigator.mediaSession.setActionHandler("seekbackward", (details) => {
-        const active = activeAudioRef.current === "A" ? audioARef.current! : audioBRef.current!;
-        active.currentTime = Math.max(0, active.currentTime - (details.seekOffset || 10));
+        audio.currentTime = Math.max(0, audio.currentTime - (details.seekOffset || 10));
+        updatePositionState();
       });
       navigator.mediaSession.setActionHandler("seekforward", (details) => {
-        const active = activeAudioRef.current === "A" ? audioARef.current! : audioBRef.current!;
-        active.currentTime = Math.min(active.duration, active.currentTime + (details.seekOffset || 10));
-      });
-      navigator.mediaSession.setActionHandler("previoustrack", () => {
-        setState((prev) => {
-          if (prev.playlistIndex > 0) {
-            const i = prev.playlistIndex - 1;
-            const ayah = prev.playlist[i];
-            const active = activeAudioRef.current === "A" ? audioARef.current! : audioBRef.current!;
-            active.src = getAyahAudioUrl(ayah.number, prev.reciter);
-            active.play().catch(() => {});
-            updateMediaSession(ayah, prev.currentSurahName);
-            return { ...prev, currentAyah: ayah, playlistIndex: i };
-          }
-          return prev;
-        });
-      });
-      navigator.mediaSession.setActionHandler("nexttrack", () => {
-        setState((prev) => {
-          if (prev.playlistIndex < prev.playlist.length - 1) {
-            const i = prev.playlistIndex + 1;
-            const ayah = prev.playlist[i];
-            const inactive = activeAudioRef.current === "A" ? audioBRef.current! : audioARef.current!;
-            const active = activeAudioRef.current === "A" ? audioARef.current! : audioBRef.current!;
-            active.pause();
-            inactive.src = getAyahAudioUrl(ayah.number, prev.reciter);
-            activeAudioRef.current = activeAudioRef.current === "A" ? "B" : "A";
-            inactive.play().catch(() => {});
-            updateMediaSession(ayah, prev.currentSurahName);
-            return { ...prev, currentAyah: ayah, playlistIndex: i };
-          }
-          return prev;
-        });
+        audio.currentTime = Math.min(audio.duration, audio.currentTime + (details.seekOffset || 10));
+        updatePositionState();
       });
     }
 
     return () => {
-      audioA.pause(); audioA.src = "";
-      audioB.pause(); audioB.src = "";
+      audio.pause();
+      audio.src = "";
       releaseWakeLock();
     };
-  }, [requestWakeLock, releaseWakeLock, updateMediaSession, updatePlaybackState]);
+  }, [requestWakeLock, releaseWakeLock, updatePlaybackState, updatePositionState]);
 
+  // Update MediaSession when surah changes
   useEffect(() => {
-    if (state.currentAyah) {
-      updateMediaSession(state.currentAyah, state.currentSurahName);
+    if (state.currentSurahName) {
+      updateMediaSession(state.currentSurahName);
     }
-  }, [state.currentAyah, state.currentSurahName, updateMediaSession]);
+  }, [state.currentSurahName, updateMediaSession]);
 
+  // Play full surah audio (continuous, no interruption on screen off)
+  const playAll = useCallback((ayahs: Ayah[], surahName: string, surahNumber: number) => {
+    if (ayahs.length === 0) return;
+    const audio = audioRef.current!;
+    const url = getSurahAudioUrl(surahNumber, state.reciter);
+    audio.src = url;
+    audio.play().catch(() => {});
+    updateMediaSession(surahName);
+    setState((s) => ({
+      ...s,
+      currentAyah: ayahs[0],
+      currentSurahName: surahName,
+      currentSurahNumber: surahNumber,
+      playlist: ayahs,
+      playlistIndex: 0,
+      isPlaying: true,
+      mode: "surah",
+    }));
+  }, [state.reciter, updateMediaSession]);
+
+  // Play a single ayah (for tapping on individual ayah)
   const play = useCallback((ayah: Ayah, surahName: string, playlist?: Ayah[], startIndex?: number) => {
-    const active = getActiveAudio();
+    const audio = audioRef.current!;
     const url = getAyahAudioUrl(ayah.number, state.reciter);
-    active.src = url;
-    active.play().catch(() => {});
-
-    const pl = playlist || [ayah];
-    const idx = startIndex ?? 0;
-
+    audio.src = url;
+    audio.play().catch(() => {});
+    updateMediaSession(surahName, `Ayah ${ayah.numberInSurah}`);
     setState((s) => ({
       ...s,
       currentAyah: ayah,
       currentSurahName: surahName,
-      playlist: pl,
-      playlistIndex: idx,
+      playlist: playlist || [ayah],
+      playlistIndex: startIndex ?? 0,
       isPlaying: true,
+      mode: "ayah",
     }));
+  }, [state.reciter, updateMediaSession]);
 
-    // Preload next ayah into inactive element
-    preloadNext(pl, idx, state.reciter);
-  }, [state.reciter, getActiveAudio, preloadNext]);
-
-  const playAll = useCallback((ayahs: Ayah[], surahName: string) => {
-    if (ayahs.length === 0) return;
-    play(ayahs[0], surahName, ayahs, 0);
-  }, [play]);
-
-  const pause = useCallback(() => { getActiveAudio().pause(); }, [getActiveAudio]);
-  const resume = useCallback(() => { getActiveAudio().play().catch(() => {}); }, [getActiveAudio]);
+  const pause = useCallback(() => { audioRef.current?.pause(); }, []);
+  const resume = useCallback(() => { audioRef.current?.play().catch(() => {}); }, []);
   const stop = useCallback(() => {
-    const audioA = audioARef.current!;
-    const audioB = audioBRef.current!;
-    audioA.pause(); audioA.src = "";
-    audioB.pause(); audioB.src = "";
-    activeAudioRef.current = "A";
-    setState((s) => ({ ...s, isPlaying: false, currentAyah: null, playlist: [], playlistIndex: 0 }));
+    const audio = audioRef.current!;
+    audio.pause();
+    audio.src = "";
+    setState((s) => ({ ...s, isPlaying: false, currentAyah: null, currentSurahNumber: null, playlist: [], playlistIndex: 0 }));
     releaseWakeLock();
     updatePlaybackState(false);
   }, [releaseWakeLock, updatePlaybackState]);
 
-  const next = useCallback(() => {
-    setState((prev) => {
-      if (prev.playlistIndex < prev.playlist.length - 1) {
-        const i = prev.playlistIndex + 1;
-        const ayah = prev.playlist[i];
-        const active = getActiveAudio();
-        const inactive = getInactiveAudio();
-
-        // Check if inactive already has the next ayah preloaded
-        const expectedUrl = getAyahAudioUrl(ayah.number, prev.reciter);
-        if (inactive.src === expectedUrl || inactive.src.endsWith(`/${ayah.number}.mp3`)) {
-          active.pause();
-          activeAudioRef.current = activeAudioRef.current === "A" ? "B" : "A";
-          inactive.play().catch(() => {});
-        } else {
-          active.src = expectedUrl;
-          active.play().catch(() => {});
-        }
-
-        // Preload the one after
-        const afterNext = i + 1;
-        if (afterNext < prev.playlist.length) {
-          const nowInactive = activeAudioRef.current === "A" ? audioBRef.current! : audioARef.current!;
-          nowInactive.src = getAyahAudioUrl(prev.playlist[afterNext].number, prev.reciter);
-          nowInactive.preload = "auto";
-          nowInactive.load();
-        }
-
-        return { ...prev, currentAyah: ayah, playlistIndex: i, isPlaying: true };
-      }
-      return prev;
-    });
-  }, [getActiveAudio, getInactiveAudio]);
-
-  const prev = useCallback(() => {
-    setState((prev) => {
-      if (prev.playlistIndex > 0) {
-        const i = prev.playlistIndex - 1;
-        const ayah = prev.playlist[i];
-        const active = getActiveAudio();
-        active.src = getAyahAudioUrl(ayah.number, prev.reciter);
-        active.play().catch(() => {});
-
-        // Preload the current (now next) into inactive
-        const inactive = getInactiveAudio();
-        if (prev.currentAyah) {
-          inactive.src = getAyahAudioUrl(prev.currentAyah.number, prev.reciter);
-          inactive.preload = "auto";
-          inactive.load();
-        }
-
-        return { ...prev, currentAyah: ayah, playlistIndex: i, isPlaying: true };
-      }
-      return prev;
-    });
-  }, [getActiveAudio, getInactiveAudio]);
+  const next = useCallback(() => { /* No-op in surah mode */ }, []);
+  const prev = useCallback(() => { /* No-op in surah mode */ }, []);
 
   const seek = useCallback((time: number) => {
-    const active = getActiveAudio();
-    if (active) {
-      active.currentTime = time;
+    if (audioRef.current) {
+      audioRef.current.currentTime = time;
       updatePositionState();
     }
-  }, [getActiveAudio, updatePositionState]);
+  }, [updatePositionState]);
 
   const setReciter = useCallback((id: string) => {
     localStorage.setItem("quran-reciter", id);

@@ -1,5 +1,5 @@
 import { motion, AnimatePresence } from "framer-motion";
-import { Play, Pause, SkipBack, SkipForward, X, ChevronUp } from "lucide-react";
+import { Play, Pause, X, ChevronUp } from "lucide-react";
 import { useState } from "react";
 import { useQuranPlayer } from "@/contexts/QuranPlayerContext";
 import { Slider } from "@/components/ui/slider";
@@ -12,10 +12,10 @@ function formatTime(s: number): string {
 }
 
 const QuranMiniPlayer = () => {
-  const { isPlaying, currentAyah, currentSurahName, currentTime, duration, pause, resume, next, prev, stop, seek, playlistIndex, playlist } = useQuranPlayer();
+  const { isPlaying, currentSurahName, currentTime, duration, pause, resume, stop, seek, mode } = useQuranPlayer();
   const [expanded, setExpanded] = useState(false);
 
-  if (!currentAyah) return null;
+  if (!currentSurahName) return null;
 
   return (
     <AnimatePresence>
@@ -35,7 +35,10 @@ const QuranMiniPlayer = () => {
           >
             <div className="text-center mb-3">
               <p className="text-lg font-arabic font-bold text-foreground leading-loose">
-                {currentAyah.text}
+                {currentSurahName}
+              </p>
+              <p className="text-xs text-muted-foreground mt-1">
+                {mode === "surah" ? "Full Surah" : "Single Ayah"}
               </p>
             </div>
             <div className="flex items-center gap-3 mb-2">
@@ -49,9 +52,6 @@ const QuranMiniPlayer = () => {
               />
               <span className="text-xs text-muted-foreground w-10">{formatTime(duration)}</span>
             </div>
-            <p className="text-xs text-center text-muted-foreground">
-              Ayah {playlistIndex + 1} of {playlist.length}
-            </p>
           </motion.div>
         )}
 
@@ -64,21 +64,17 @@ const QuranMiniPlayer = () => {
 
             <div className="flex-1 min-w-0">
               <p className="text-sm font-semibold text-foreground truncate">{currentSurahName}</p>
-              <p className="text-xs text-muted-foreground">Ayah {currentAyah.numberInSurah}</p>
+              <p className="text-xs text-muted-foreground">
+                {mode === "surah" ? formatTime(currentTime) + " / " + formatTime(duration) : "Single Ayah"}
+              </p>
             </div>
 
             <div className="flex items-center gap-1">
-              <button onClick={prev} className="p-1.5 rounded-full hover:bg-secondary" disabled={playlistIndex === 0}>
-                <SkipBack size={16} className="text-foreground" />
-              </button>
               <button
                 onClick={isPlaying ? pause : resume}
                 className="p-2 rounded-full gradient-emerald"
               >
                 {isPlaying ? <Pause size={16} className="text-primary-foreground" /> : <Play size={16} className="text-primary-foreground" />}
-              </button>
-              <button onClick={next} className="p-1.5 rounded-full hover:bg-secondary" disabled={playlistIndex >= playlist.length - 1}>
-                <SkipForward size={16} className="text-foreground" />
               </button>
               <button onClick={stop} className="p-1.5 rounded-full hover:bg-secondary">
                 <X size={14} className="text-muted-foreground" />
