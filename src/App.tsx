@@ -55,6 +55,7 @@ const App = () => (
               <Route path="/halal-scanner/settings" element={<SettingsPage />} />
               <Route path="/ramadan" element={<RamadanPage />} />
               <Route path="/boycott" element={<BoycottScannerPage />} />
+              <Route path="/boycott/scan" element={<BoycottScanPage />} />
               <Route path="/nearby" element={<NearbyPage />} />
             </Route>
             <Route path="*" element={<NotFound />} />
