@@ -12,7 +12,7 @@ function formatTime(s: number): string {
 }
 
 const QuranMiniPlayer = () => {
-  const { isPlaying, currentSurahName, currentTime, duration, pause, resume, stop, seek, mode } = useQuranPlayer();
+  const { isPlaying, currentSurahName, currentAyah, currentTime, duration, pause, resume, stop, seek, mode } = useQuranPlayer();
   const [expanded, setExpanded] = useState(false);
 
   if (!currentSurahName) return null;
