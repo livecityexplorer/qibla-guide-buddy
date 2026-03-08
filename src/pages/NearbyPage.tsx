@@ -27,10 +27,27 @@ function buildOverpassQuery(lat: number, lon: number, radius: number, type: Plac
   let filters: string[] = [];
 
   if (type === "all" || type === "mosque") {
+    // Standard OSM tags for mosques
     filters.push(`node["amenity"="place_of_worship"]["religion"="muslim"]${bbox};`);
     filters.push(`way["amenity"="place_of_worship"]["religion"="muslim"]${bbox};`);
+    filters.push(`relation["amenity"="place_of_worship"]["religion"="muslim"]${bbox};`);
+    // Some mappers use "islam" instead of "muslim"
+    filters.push(`node["amenity"="place_of_worship"]["religion"="islam"]${bbox};`);
+    filters.push(`way["amenity"="place_of_worship"]["religion"="islam"]${bbox};`);
+    // Building=mosque tag
     filters.push(`node["building"="mosque"]${bbox};`);
     filters.push(`way["building"="mosque"]${bbox};`);
+    filters.push(`relation["building"="mosque"]${bbox};`);
+    // Name-based search for mosques in multiple languages
+    filters.push(`node["amenity"="place_of_worship"]["name"~"mosque|mosqu[eé]e|masjid|mezquita|moschee|مسجد|cami|mescid|masjed|musalla|jamia|jami",i]${bbox};`);
+    filters.push(`way["amenity"="place_of_worship"]["name"~"mosque|mosqu[eé]e|masjid|mezquita|moschee|مسجد|cami|mescid|masjed|musalla|jamia|jami",i]${bbox};`);
+    // Islamic centers often serve as mosques
+    filters.push(`node["amenity"="place_of_worship"]["name"~"islamic|islami|islam[ıi]c|muslim|centre islamique|centro isl|islamisch",i]${bbox};`);
+    filters.push(`way["amenity"="place_of_worship"]["name"~"islamic|islami|islam[ıi]c|muslim|centre islamique|centro isl|islamisch",i]${bbox};`);
+    // Some mosques are tagged as community centres
+    filters.push(`node["amenity"="community_centre"]["religion"="muslim"]${bbox};`);
+    filters.push(`way["amenity"="community_centre"]["religion"="muslim"]${bbox};`);
+    filters.push(`node["amenity"="community_centre"]["name"~"mosque|masjid|islamic|muslim|مسجد",i]${bbox};`);
   }
   if (type === "all" || type === "restaurant") {
     filters.push(`node["amenity"="restaurant"]["diet:halal"="yes"]${bbox};`);
