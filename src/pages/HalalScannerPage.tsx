@@ -389,7 +389,15 @@ const HalalScannerPage = () => {
                 </div>
               )}
 
-              {!loading && results.length > 0 && (
+              {!loading && error && (
+                <div className="rounded-2xl bg-destructive/10 border border-destructive/30 p-4 text-center">
+                  <XCircle size={24} className="mx-auto text-destructive" />
+                  <p className="mt-2 text-sm text-destructive font-medium">{error}</p>
+                  <button onClick={handleSearch} className="mt-2 text-xs font-medium text-primary">Try again</button>
+                </div>
+              )}
+
+              {!loading && !error && results.length > 0 && (
                 <div className="space-y-2">
                   <p className="text-xs text-muted-foreground font-medium">{results.length} products found</p>
                   {results.map((product, i) => (
