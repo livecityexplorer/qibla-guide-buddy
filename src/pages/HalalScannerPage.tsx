@@ -21,15 +21,21 @@ type Mode = "home" | "scan" | "search";
 
 const HalalScannerPage = () => {
   const navigate = useNavigate();
-  const [mode, setMode] = useState<Mode>("home");
-  const [query, setQuery] = useState("");
+  // Restore search state from sessionStorage for back navigation
+  const savedSearch = sessionStorage.getItem("halal_search_state");
+  const savedParsed = savedSearch ? JSON.parse(savedSearch) : null;
+  
+  const [query, setQuery] = useState(savedParsed?.query || "");
   const [barcode, setBarcode] = useState("");
   const [loading, setLoading] = useState(false);
-  const [results, setResults] = useState<ProductResult[]>([]);
+  const [results, setResults] = useState<ProductResult[]>(savedParsed?.results || []);
   const [singleResult, setSingleResult] = useState<ProductResult | null>(null);
-  const [searched, setSearched] = useState(false);
+  const [searched, setSearched] = useState(!!savedParsed?.results?.length);
   const [error, setError] = useState("");
   const [manualEntry, setManualEntry] = useState(false);
+
+  // If we have saved search state, restore to search mode
+  const [mode, setMode] = useState<Mode>(savedParsed?.results?.length ? "search" : "home");
 
   const todaysIngredient = getTodaysIngredient();
   const progress = getLearningProgress();
@@ -45,6 +51,8 @@ const HalalScannerPage = () => {
     try {
       const data = await searchByName(query.trim());
       setResults(data.products);
+      // Save search state for back navigation
+      sessionStorage.setItem("halal_search_state", JSON.stringify({ query: query.trim(), results: data.products }));
       const settings = getSettings();
       if (settings.autoSave) {
         data.products.slice(0, 3).forEach(p => {
@@ -89,6 +97,10 @@ const HalalScannerPage = () => {
     setResults([]);
     setSearched(false);
     setManualEntry(false);
+    // Clear saved search when leaving search mode
+    if (m !== "search") {
+      sessionStorage.removeItem("halal_search_state");
+    }
   };
 
   return (
