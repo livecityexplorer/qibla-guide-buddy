@@ -49,9 +49,20 @@ const BoycottScannerPage = () => {
           <ArrowLeft size={20} />
           <span className="text-sm">Back</span>
         </button>
-        <h1 className="text-2xl font-bold text-white">Boycott Scanner</h1>
-        <p className="mt-1 text-sm text-white/70">Support Palestine 🇵🇸 — Check products & brands</p>
-        <p className="mt-0.5 text-xs text-white/50">{boycottDirectory.length} brands tracked</p>
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-2xl font-bold text-white">Boycott Scanner</h1>
+            <p className="mt-1 text-sm text-white/70">Support Palestine 🇵🇸 — Check products & brands</p>
+            <p className="mt-0.5 text-xs text-white/50">{boycottDirectory.length} brands tracked</p>
+          </div>
+          <button
+            onClick={() => navigate("/boycott/scan")}
+            className="flex flex-col items-center gap-1 rounded-xl bg-white/15 backdrop-blur-sm px-4 py-3 text-white transition-all active:scale-95"
+          >
+            <ScanBarcode size={24} />
+            <span className="text-[10px] font-medium">Scan</span>
+          </button>
+        </div>
       </div>
 
       <div className="px-4 -mt-4 pb-24 space-y-4">
