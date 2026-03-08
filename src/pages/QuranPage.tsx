@@ -271,6 +271,15 @@ const QuranPage = () => {
               </div>
             ) : arabicData ? (
               <>
+                {/* Back to surah list button */}
+                <button
+                  onClick={() => setSelectedSurah(null)}
+                  className="flex items-center gap-2 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors mb-2"
+                >
+                  <ArrowLeft size={18} />
+                  Back to Surah List
+                </button>
+
                 {/* Surah header */}
                 <div className="rounded-xl gradient-emerald p-4 text-center shadow-emerald">
                   <h2 className="text-xl font-bold text-primary-foreground font-arabic">{arabicData.name}</h2>
