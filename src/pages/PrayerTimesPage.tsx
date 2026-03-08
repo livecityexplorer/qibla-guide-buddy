@@ -76,6 +76,13 @@ const PrayerTimesPage = () => {
                 <label className="text-xs font-medium text-muted-foreground mb-1.5 flex items-center gap-2"><Volume2 size={14} />{t("prayer.volume")}: {Math.round(settings.volume * 100)}%</label>
                 <Slider value={[settings.volume * 100]} onValueChange={([v]) => updateSettings({ volume: v / 100 })} max={100} min={10} step={5} className="w-full" />
               </div>
+              <div className="flex items-center justify-between mb-4">
+                <div>
+                  <p className="text-sm font-medium text-foreground">10-min Pre-Reminder</p>
+                  <p className="text-xs text-muted-foreground">Get a beautiful notification 10 min before each prayer</p>
+                </div>
+                <Switch checked={settings.preReminder ?? true} onCheckedChange={(checked) => updateSettings({ preReminder: checked })} />
+              </div>
               <div className="mb-4">
                 <label className="text-xs font-medium text-muted-foreground mb-2 block">{t("prayer.enableForEach")}</label>
                 <div className="grid grid-cols-2 gap-2">
