@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { ArrowLeft, Search, Play, Pause, Volume2, Globe, Loader2, BookmarkCheck, Minus, Plus } from "lucide-react";
 import { useNavigate } from "react-router-dom";
@@ -51,6 +51,10 @@ const QuranPage = () => {
   const [arabicSize, setArabicSize] = useState(() => parseInt(localStorage.getItem("quran-arabic-size") || "24", 10));
   const [translationSize, setTranslationSize] = useState(() => parseInt(localStorage.getItem("quran-trans-size") || "14", 10));
 
+  // Refs for auto-scroll
+  const ayahRefs = useRef<Map<number, HTMLDivElement>>(new Map());
+  const lastScrolledAyah = useRef<number>(-1);
+
   // Load all surahs on mount
   useEffect(() => {
     getAllSurahs()
@@ -75,6 +79,23 @@ const QuranPage = () => {
       .finally(() => setLoading(false));
   }, [selectedSurah, translationEdition]);
 
+  // Auto-scroll to current ayah when it changes during playback
+  useEffect(() => {
+    if (
+      player.isPlaying &&
+      player.mode === "surah" &&
+      player.currentAyahIndex !== lastScrolledAyah.current &&
+      arabicData &&
+      player.currentSurahNumber === arabicData.number
+    ) {
+      lastScrolledAyah.current = player.currentAyahIndex;
+      const el = ayahRefs.current.get(player.currentAyahIndex);
+      if (el) {
+        el.scrollIntoView({ behavior: "smooth", block: "center" });
+      }
+    }
+  }, [player.currentAyahIndex, player.isPlaying, player.mode, player.currentSurahNumber, arabicData]);
+
   const handleTranslationChange = (edition: string) => {
     setTranslationEdition(edition);
     localStorage.setItem("quran-translation", edition);
@@ -90,7 +111,6 @@ const QuranPage = () => {
   const handlePlayAyah = (ayah: Ayah, index: number) => {
     if (!arabicData) return;
     player.play(ayah, arabicData.englishName, arabicData.ayahs, index);
-    // Save bookmark
     const bm: QuranBookmark = { surahNumber: arabicData.number, surahName: arabicData.englishName, ayahIndex: index, ayahNumber: ayah.numberInSurah, timestamp: Date.now() };
     saveBookmark(bm);
     setBookmark(bm);
@@ -101,7 +121,6 @@ const QuranPage = () => {
     player.playAll(arabicData.ayahs, arabicData.englishName, arabicData.number);
   };
 
-  // Save reading position on scroll/click
   const handleAyahVisible = useCallback((ayah: Ayah, index: number) => {
     if (!arabicData) return;
     const bm: QuranBookmark = { surahNumber: arabicData.number, surahName: arabicData.englishName, ayahIndex: index, ayahNumber: ayah.numberInSurah, timestamp: Date.now() };
@@ -124,6 +143,14 @@ const QuranPage = () => {
       localStorage.setItem("quran-trans-size", String(newSize));
     }
   };
+
+  const setAyahRef = useCallback((index: number, el: HTMLDivElement | null) => {
+    if (el) {
+      ayahRefs.current.set(index, el);
+    } else {
+      ayahRefs.current.delete(index);
+    }
+  }, []);
 
   return (
     <div className="min-h-screen pb-20">
@@ -298,20 +325,27 @@ const QuranPage = () => {
                 {/* Ayahs */}
                 {arabicData.ayahs.map((ayah, i) => {
                   const translation = translationData?.ayahs?.[i];
-                  const isCurrentlyPlaying = player.currentAyah?.number === ayah.number;
+                  const isCurrentlyPlaying =
+                    player.mode === "surah"
+                      ? player.currentAyahIndex === i && player.currentSurahNumber === arabicData.number && player.isPlaying
+                      : player.currentAyah?.number === ayah.number;
                   return (
-                    <motion.div
+                    <div
                       key={ayah.number}
-                      initial={{ opacity: 0, y: 10 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ delay: Math.min(i * 0.03, 1) }}
+                      ref={(el) => setAyahRef(i, el)}
                       onClick={() => handleAyahVisible(ayah, i)}
-                      className={`rounded-xl p-5 shadow-sm transition-colors ${
-                        isCurrentlyPlaying ? "bg-secondary border-2 border-primary/30" : "bg-card"
+                      className={`rounded-xl p-5 shadow-sm transition-all duration-500 ${
+                        isCurrentlyPlaying
+                          ? "bg-primary/10 border-2 border-primary/40 ring-2 ring-primary/20"
+                          : "bg-card"
                       }`}
                     >
                       <div className="flex items-center justify-between mb-3">
-                        <span className="flex h-7 w-7 items-center justify-center rounded-full bg-secondary text-xs font-bold text-secondary-foreground">
+                        <span className={`flex h-7 w-7 items-center justify-center rounded-full text-xs font-bold ${
+                          isCurrentlyPlaying
+                            ? "bg-primary text-primary-foreground"
+                            : "bg-secondary text-secondary-foreground"
+                        }`}>
                           {ayah.numberInSurah}
                         </span>
                         <button
@@ -333,7 +367,7 @@ const QuranPage = () => {
                           {translation.text}
                         </p>
                       )}
-                    </motion.div>
+                    </div>
                   );
                 })}
               </>
