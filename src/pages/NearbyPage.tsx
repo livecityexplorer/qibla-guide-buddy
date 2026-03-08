@@ -143,33 +143,46 @@ async function searchNearby(lat: number, lon: number, type: PlaceType | "all", r
 }
 
 // Also search Nominatim for additional results
-async function searchNominatim(lat: number, lon: number, type: PlaceType): Promise<NearbyPlace[]> {
-  const queries: Record<PlaceType, string> = {
-    mosque: "mosque",
-    restaurant: "halal restaurant",
-    shop: "halal shop",
-    butcher: "halal butcher",
+async function searchNominatim(lat: number, lon: number, type: PlaceType, radius = 5000): Promise<NearbyPlace[]> {
+  const queries: Record<PlaceType, string[]> = {
+    mosque: ["mosque", "masjid", "islamic center"],
+    restaurant: ["halal restaurant", "halal food"],
+    shop: ["halal shop", "halal grocery"],
+    butcher: ["halal butcher", "halal meat"],
   };
 
-  try {
-    const q = queries[type];
-    const res = await fetch(
-      `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(q)}&format=json&limit=10&lat=${lat}&lon=${lon}&bounded=1&viewbox=${lon - 0.05},${lat + 0.05},${lon + 0.05},${lat - 0.05}`,
-      { headers: { "User-Agent": "IslamicCompanionApp/1.0" } }
-    );
-    if (!res.ok) return [];
-    const data = await res.json();
+  const degreeSpread = Math.max(0.1, radius / 111000 * 1.5);
+  const allResults: NearbyPlace[] = [];
 
-    return data.map((item: any) => ({
-      id: item.place_id,
-      name: item.display_name?.split(",")[0] || "Unknown",
-      type,
-      lat: parseFloat(item.lat),
-      lon: parseFloat(item.lon),
-      distance: haversineDistance(lat, lon, parseFloat(item.lat), parseFloat(item.lon)),
-      address: item.display_name?.split(",").slice(1, 3).join(",").trim() || "",
-      tags: {},
-    }));
+  try {
+    for (const q of queries[type]) {
+      const res = await fetch(
+        `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(q)}&format=json&limit=20&lat=${lat}&lon=${lon}&viewbox=${lon - degreeSpread},${lat + degreeSpread},${lon + degreeSpread},${lat - degreeSpread}`,
+        { headers: { "User-Agent": "IslamicCompanionApp/1.0" } }
+      );
+      if (!res.ok) continue;
+      const data = await res.json();
+
+      for (const item of data) {
+        const itemLat = parseFloat(item.lat);
+        const itemLon = parseFloat(item.lon);
+        const dist = haversineDistance(lat, lon, itemLat, itemLon);
+        if (dist > radius / 1000 * 1.5) continue; // allow some slack beyond radius
+        allResults.push({
+          id: item.place_id,
+          name: item.display_name?.split(",")[0] || "Unknown",
+          type,
+          lat: itemLat,
+          lon: itemLon,
+          distance: dist,
+          address: item.display_name?.split(",").slice(1, 3).join(",").trim() || "",
+          tags: {},
+        });
+      }
+      // Small delay between Nominatim requests to respect rate limits
+      await new Promise(r => setTimeout(r, 1100));
+    }
+    return allResults;
   } catch {
     return [];
   }
