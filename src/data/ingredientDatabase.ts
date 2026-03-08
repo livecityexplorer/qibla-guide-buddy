@@ -35,6 +35,7 @@ export const INGREDIENT_CATEGORIES = [
   "Emulsifiers",
   "Flavoring",
   "Coloring",
+  "Cosmetics & Personal Care",
 ];
 
 export const ingredientDatabase: IngredientInfo[] = [
