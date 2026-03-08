@@ -13,10 +13,12 @@ export interface ProductResult {
   summary: string;
   confidence: "certified" | "high" | "analysis-based" | "low";
   analysis: { ingredient: string; info: any; status: HalalStatus }[];
-  source: "openfoodfacts" | "local" | "manual";
+  source: "openfoodfacts" | "openbeautyfacts" | "local" | "manual";
+  productType: "food" | "cosmetic" | "unknown";
 }
 
 const OFF_API = "https://world.openfoodfacts.org";
+const OBF_API = "https://world.openbeautyfacts.org";
 
 function parseIngredients(text: string): string[] {
   if (!text) return [];
@@ -27,12 +29,13 @@ function parseIngredients(text: string): string[] {
     .filter(s => s.length > 1 && s.length < 80);
 }
 
-function generateSummary(analysis: { ingredient: string; status: HalalStatus }[], overallStatus: HalalStatus): string {
+function generateSummary(analysis: { ingredient: string; status: HalalStatus }[], overallStatus: HalalStatus, productType: "food" | "cosmetic" | "unknown" = "food"): string {
   const haramIngredients = analysis.filter(a => a.status === "haram").map(a => a.ingredient);
   const mushboohIngredients = analysis.filter(a => a.status === "mushbooh").map(a => a.ingredient);
+  const typeLabel = productType === "cosmetic" ? "use" : "consumption";
 
   if (overallStatus === "haram") {
-    return `Contains Haram ingredient(s): ${haramIngredients.join(", ")}. Not suitable for Muslim consumption.`;
+    return `Contains Haram ingredient(s): ${haramIngredients.join(", ")}. Not suitable for Muslim ${typeLabel}.`;
   }
   if (overallStatus === "mushbooh") {
     if (haramIngredients.length > 0) {
@@ -40,7 +43,21 @@ function generateSummary(analysis: { ingredient: string; status: HalalStatus }[]
     }
     return `Contains doubtful ingredient(s): ${mushboohIngredients.join(", ")}. Verify source with manufacturer.`;
   }
-  return "All identified ingredients appear to be Halal. Always verify with certification bodies for full assurance.";
+  return `All identified ingredients appear to be Halal. Always verify with certification bodies for full assurance.`;
+}
+
+function detectProductType(categories: string[], name: string): "food" | "cosmetic" | "unknown" {
+  const combined = `${name} ${categories.join(" ")}`.toLowerCase();
+  const cosmeticKeywords = [
+    "cosmetic", "beauty", "skincare", "skin care", "makeup", "make-up", "lipstick",
+    "shampoo", "conditioner", "soap", "lotion", "cream", "serum", "moisturizer",
+    "sunscreen", "deodorant", "perfume", "fragrance", "nail polish", "mascara",
+    "foundation", "concealer", "blush", "eyeshadow", "eyeliner", "body wash",
+    "face wash", "cleanser", "toner", "hair care", "toothpaste", "mouthwash",
+    "body lotion", "hand cream", "lip balm", "shower gel",
+  ];
+  if (cosmeticKeywords.some(kw => combined.includes(kw))) return "cosmetic";
+  return "unknown";
 }
 
 // Check product name and categories for pork indicators
@@ -56,8 +73,15 @@ function detectPorkFromMetadata(name: string, categories: string[]): string[] {
 }
 
 export async function searchByBarcode(barcode: string): Promise<ProductResult | null> {
+  // Try Open Food Facts first, then Open Beauty Facts
+  const result = await _searchBarcodeFromAPI(OFF_API, barcode, "openfoodfacts");
+  if (result) return result;
+  return _searchBarcodeFromAPI(OBF_API, barcode, "openbeautyfacts");
+}
+
+async function _searchBarcodeFromAPI(apiBase: string, barcode: string, source: "openfoodfacts" | "openbeautyfacts"): Promise<ProductResult | null> {
   try {
-    const res = await fetch(`${OFF_API}/api/v2/product/${barcode}?fields=code,product_name,brands,image_front_url,categories_tags,ingredients_text_en,ingredients_text`);
+    const res = await fetch(`${apiBase}/api/v2/product/${barcode}?fields=code,product_name,brands,image_front_url,categories_tags,ingredients_text_en,ingredients_text`);
     const data = await res.json();
     if (data.status === 0 || !data.product) return null;
     const p = data.product;
@@ -65,7 +89,6 @@ export async function searchByBarcode(barcode: string): Promise<ProductResult | 
     const ingredients = parseIngredients(ingredientsText);
     const categories = (p.categories_tags || []).map((c: string) => c.replace("en:", "").replace(/-/g, " "));
     
-    // Also check product name and categories for pork
     const porkFromMeta = detectPorkFromMetadata(p.product_name || "", categories);
     const allIngredients = [...ingredients];
     for (const pk of porkFromMeta) {
@@ -76,6 +99,7 @@ export async function searchByBarcode(barcode: string): Promise<ProductResult | 
     
     const analysis = analyzeIngredientList(allIngredients);
     const status = getOverallStatus(analysis);
+    const productType = source === "openbeautyfacts" ? "cosmetic" as const : detectProductType(categories, p.product_name || "");
 
     return {
       id: p.code || barcode,
@@ -87,10 +111,11 @@ export async function searchByBarcode(barcode: string): Promise<ProductResult | 
       ingredients: allIngredients,
       ingredientsText,
       status,
-      summary: generateSummary(analysis, status),
+      summary: generateSummary(analysis, status, productType),
       confidence: ingredients.length > 3 ? "analysis-based" : "low",
       analysis,
-      source: "openfoodfacts",
+      source,
+      productType,
     };
   } catch {
     return null;
@@ -98,9 +123,29 @@ export async function searchByBarcode(barcode: string): Promise<ProductResult | 
 }
 
 export async function searchByName(query: string, page = 1): Promise<{ products: ProductResult[]; count: number }> {
+  // Query both Open Food Facts and Open Beauty Facts in parallel
+  const [foodResults, beautyResults] = await Promise.all([
+    _searchNameFromAPI(OFF_API, query, page, "openfoodfacts"),
+    _searchNameFromAPI(OBF_API, query, page, "openbeautyfacts"),
+  ]);
+  
+  // Merge results, deduplicate by barcode, food results first
+  const seen = new Set<string>();
+  const merged: ProductResult[] = [];
+  for (const p of [...foodResults.products, ...beautyResults.products]) {
+    if (!seen.has(p.barcode)) {
+      seen.add(p.barcode);
+      merged.push(p);
+    }
+  }
+  
+  return { products: merged, count: foodResults.count + beautyResults.count };
+}
+
+async function _searchNameFromAPI(apiBase: string, query: string, page: number, source: "openfoodfacts" | "openbeautyfacts"): Promise<{ products: ProductResult[]; count: number }> {
   try {
     const res = await fetch(
-      `${OFF_API}/cgi/search.pl?search_terms=${encodeURIComponent(query)}&search_simple=1&action=process&json=1&page=${page}&page_size=20&fields=code,product_name,brands,image_front_small_url,categories_tags,ingredients_text_en,ingredients_text`
+      `${apiBase}/cgi/search.pl?search_terms=${encodeURIComponent(query)}&search_simple=1&action=process&json=1&page=${page}&page_size=20&fields=code,product_name,brands,image_front_small_url,categories_tags,ingredients_text_en,ingredients_text`
     );
     const data = await res.json();
     const products: ProductResult[] = (data.products || [])
@@ -110,7 +155,6 @@ export async function searchByName(query: string, page = 1): Promise<{ products:
         const ingredients = parseIngredients(ingredientsText);
         const categories = (p.categories_tags || []).slice(0, 3).map((c: string) => c.replace("en:", "").replace(/-/g, " "));
         
-        // Also check product name and categories for pork
         const porkFromMeta = detectPorkFromMetadata(p.product_name || "", categories);
         const allIngredients = [...ingredients];
         for (const pk of porkFromMeta) {
@@ -121,6 +165,7 @@ export async function searchByName(query: string, page = 1): Promise<{ products:
         
         const analysis = analyzeIngredientList(allIngredients);
         const status = getOverallStatus(analysis);
+        const productType = source === "openbeautyfacts" ? "cosmetic" as const : detectProductType(categories, p.product_name || "");
         return {
           id: p.code,
           barcode: p.code,
@@ -131,10 +176,11 @@ export async function searchByName(query: string, page = 1): Promise<{ products:
           ingredients: allIngredients,
           ingredientsText,
           status,
-          summary: generateSummary(analysis, status),
+          summary: generateSummary(analysis, status, productType),
           confidence: ingredients.length > 3 ? "analysis-based" : "low",
           analysis,
-          source: "openfoodfacts" as const,
+          source,
+          productType,
         };
       });
     return { products, count: data.count || 0 };
