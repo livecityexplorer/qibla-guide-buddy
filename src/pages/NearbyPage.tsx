@@ -212,10 +212,23 @@ const NearbyPage = () => {
     setError("");
     try {
       // Fetch from Overpass (main) + Nominatim (supplementary) in parallel
-      const [overpassResults, nominatimResults] = await Promise.all([
-        searchNearby(lat, lon, type, searchRadius),
-        type !== "all" ? searchNominatim(lat, lon, type) : Promise.resolve([]),
-      ]);
+      // Fetch Overpass first, then Nominatim as fallback for each relevant type
+      let overpassResults: NearbyPlace[] = [];
+      try {
+        overpassResults = await searchNearby(lat, lon, type, searchRadius);
+      } catch (e) {
+        console.warn("Overpass failed, relying on Nominatim:", e);
+      }
+
+      const typesToSearch: PlaceType[] = type === "all" 
+        ? ["mosque", "restaurant", "shop", "butcher"] 
+        : [type];
+      
+      let nominatimResults: NearbyPlace[] = [];
+      for (const t of typesToSearch) {
+        const results = await searchNominatim(lat, lon, t, searchRadius);
+        nominatimResults.push(...results);
+      }
 
       // Merge and deduplicate
       const merged = [...overpassResults];
