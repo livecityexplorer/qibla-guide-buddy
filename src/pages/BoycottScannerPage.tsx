@@ -188,12 +188,12 @@ const BoycottScannerPage = () => {
                       <img
                         src={entry.logo}
                         alt={entry.name}
-                        className="h-10 w-10 rounded-lg object-contain bg-white p-1"
+                        className="h-14 w-14 rounded-xl object-contain bg-white p-1.5 shadow-sm"
                         onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
                       />
                     ) : (
-                      <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-muted">
-                        <ShieldAlert size={20} className={config.color} />
+                      <div className="flex h-14 w-14 items-center justify-center rounded-xl bg-muted">
+                        <ShieldAlert size={24} className={config.color} />
                       </div>
                     )}
                     <div className="flex-1 min-w-0">
