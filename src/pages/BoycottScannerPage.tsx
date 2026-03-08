@@ -1,6 +1,6 @@
 import { useState, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { ArrowLeft, ScanLine, ShieldAlert, ShieldCheck, Search, Filter, ChevronDown, ExternalLink } from "lucide-react";
+import { ArrowLeft, ScanLine, ShieldAlert, ShieldCheck, Search, Filter, ChevronDown, ExternalLink, ScanBarcode } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { boycottDirectory, searchBoycottDirectory, getLevelConfig, type BoycottEntry, type BoycottLevel } from "@/data/boycottDirectory";
 
@@ -49,9 +49,20 @@ const BoycottScannerPage = () => {
           <ArrowLeft size={20} />
           <span className="text-sm">Back</span>
         </button>
-        <h1 className="text-2xl font-bold text-white">Boycott Scanner</h1>
-        <p className="mt-1 text-sm text-white/70">Support Palestine 🇵🇸 — Check products & brands</p>
-        <p className="mt-0.5 text-xs text-white/50">{boycottDirectory.length} brands tracked</p>
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-2xl font-bold text-white">Boycott Scanner</h1>
+            <p className="mt-1 text-sm text-white/70">Support Palestine 🇵🇸 — Check products & brands</p>
+            <p className="mt-0.5 text-xs text-white/50">{boycottDirectory.length} brands tracked</p>
+          </div>
+          <button
+            onClick={() => navigate("/boycott/scan")}
+            className="flex flex-col items-center gap-1 rounded-xl bg-white/15 backdrop-blur-sm px-4 py-3 text-white transition-all active:scale-95"
+          >
+            <ScanBarcode size={24} />
+            <span className="text-[10px] font-medium">Scan</span>
+          </button>
+        </div>
       </div>
 
       <div className="px-4 -mt-4 pb-24 space-y-4">
@@ -188,12 +199,12 @@ const BoycottScannerPage = () => {
                       <img
                         src={entry.logo}
                         alt={entry.name}
-                        className="h-10 w-10 rounded-lg object-contain bg-white p-1"
+                        className="h-14 w-14 rounded-xl object-contain bg-white p-1.5 shadow-sm"
                         onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
                       />
                     ) : (
-                      <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-muted">
-                        <ShieldAlert size={20} className={config.color} />
+                      <div className="flex h-14 w-14 items-center justify-center rounded-xl bg-muted">
+                        <ShieldAlert size={24} className={config.color} />
                       </div>
                     )}
                     <div className="flex-1 min-w-0">
