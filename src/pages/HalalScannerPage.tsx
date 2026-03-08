@@ -596,6 +596,9 @@ const ResultCard = ({ product, navigate, compact }: { product: ProductResult; na
           <div className="flex items-center gap-1.5">
             <Icon size={14} className={config.textClass} />
             <span className={`text-xs font-bold ${config.textClass}`}>{config.label}</span>
+            {product.productType === "cosmetic" && (
+              <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-purple-500/10 text-purple-600 font-semibold">💄 Cosmetic</span>
+            )}
           </div>
           <p className="font-medium text-foreground truncate text-sm">{product.name}</p>
           <p className="text-xs text-muted-foreground truncate">{product.brand}</p>
