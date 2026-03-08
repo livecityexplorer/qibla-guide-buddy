@@ -299,32 +299,33 @@ const NearbyPage = () => {
     setLoading(true);
     setError("");
     try {
-      // Fetch from Overpass (main) + Nominatim (supplementary) in parallel
-      // Fetch Overpass first, then Nominatim as fallback for each relevant type
-      let overpassResults: NearbyPlace[] = [];
-      try {
-        overpassResults = await searchNearby(lat, lon, type, searchRadius);
-      } catch (e) {
-        console.warn("Overpass failed, relying on Nominatim:", e);
-      }
-
+      // Launch all API sources in parallel for maximum coverage
       const typesToSearch: PlaceType[] = type === "all" 
         ? ["mosque", "restaurant", "shop", "butcher"] 
         : [type];
-      
-      let nominatimResults: NearbyPlace[] = [];
-      for (const t of typesToSearch) {
-        const results = await searchNominatim(lat, lon, t, searchRadius);
-        nominatimResults.push(...results);
-      }
 
-      // Merge and deduplicate
+      const searchMosques = type === "all" || type === "mosque";
+
+      const [overpassResults, ...otherResults] = await Promise.all([
+        searchNearby(lat, lon, type, searchRadius).catch(() => [] as NearbyPlace[]),
+        // Nominatim for each type
+        ...typesToSearch.map(t => searchNominatim(lat, lon, t, searchRadius).catch(() => [] as NearbyPlace[])),
+        // Photon geocoder for each type
+        ...typesToSearch.map(t => searchPhoton(lat, lon, t, searchRadius).catch(() => [] as NearbyPlace[])),
+        // OpenTripMap specifically for mosques
+        searchMosques ? searchOpenTripMap(lat, lon, searchRadius).catch(() => [] as NearbyPlace[]) : Promise.resolve([] as NearbyPlace[]),
+      ]);
+
+      // Merge and deduplicate all sources
       const merged = [...overpassResults];
       const existingNames = new Set(merged.map((p) => p.name.toLowerCase()));
-      for (const np of nominatimResults) {
-        if (!existingNames.has(np.name.toLowerCase())) {
-          merged.push(np);
-          existingNames.add(np.name.toLowerCase());
+      for (const results of otherResults) {
+        for (const np of results) {
+          const key = np.name.toLowerCase();
+          if (!existingNames.has(key)) {
+            merged.push(np);
+            existingNames.add(key);
+          }
         }
       }
 
