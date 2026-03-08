@@ -29,6 +29,7 @@ import ProfilePage from "./pages/ProfilePage";
 import NotFound from "./pages/NotFound";
 import { QuranPlayerProvider } from "./contexts/QuranPlayerContext";
 import QuranMiniPlayer from "./components/QuranMiniPlayer";
+import PWAInstallPrompt from "./components/PWAInstallPrompt";
 
 const queryClient = new QueryClient();
 
