@@ -43,6 +43,28 @@ function generateSummary(analysis: { ingredient: string; status: HalalStatus }[]
   return "All identified ingredients appear to be Halal. Always verify with certification bodies for full assurance.";
 }
 
+// Check product name and categories for pork indicators
+function detectPorkFromMetadata(name: string, categories: string[]): string[] {
+  const porkKeywords = [
+    "pork", "pig", "swine", "ham", "bacon", "prosciutto", "pancetta", "salami",
+    "pepperoni", "chorizo", "porcine", "lard", "lardon", "serrano", "iberico",
+    "ibérico", "cerdo", "puerco", "jamón", "jambon", "porc", "cochon",
+    "schwein", "schinken", "speck", "wurst", "maiale", "suino", "porco",
+    "presunto", "varken", "domuz", "babi", "خنزير", "豚", "ポーク", "돼지",
+    "свинина", "wieprzowina", "szynka", "boczek", "morcilla", "boudin",
+    "bratwurst", "mortadella", "coppa", "capicola", "guanciale", "nduja",
+    "cotechino", "zampone", "sopressata",
+  ];
+  const detected: string[] = [];
+  const combined = `${name} ${categories.join(" ")}`.toLowerCase();
+  for (const kw of porkKeywords) {
+    if (combined.includes(kw.toLowerCase())) {
+      detected.push(kw);
+    }
+  }
+  return detected;
+}
+
 export async function searchByBarcode(barcode: string): Promise<ProductResult | null> {
   try {
     const res = await fetch(`${OFF_API}/api/v2/product/${barcode}?fields=code,product_name,brands,image_front_url,categories_tags,ingredients_text_en,ingredients_text`);
@@ -51,7 +73,18 @@ export async function searchByBarcode(barcode: string): Promise<ProductResult | 
     const p = data.product;
     const ingredientsText = p.ingredients_text_en || p.ingredients_text || "";
     const ingredients = parseIngredients(ingredientsText);
-    const analysis = analyzeIngredientList(ingredients);
+    const categories = (p.categories_tags || []).map((c: string) => c.replace("en:", "").replace(/-/g, " "));
+    
+    // Also check product name and categories for pork
+    const porkFromMeta = detectPorkFromMetadata(p.product_name || "", categories);
+    const allIngredients = [...ingredients];
+    for (const pk of porkFromMeta) {
+      if (!allIngredients.some(i => i.toLowerCase().includes(pk.toLowerCase()))) {
+        allIngredients.push(pk);
+      }
+    }
+    
+    const analysis = analyzeIngredientList(allIngredients);
     const status = getOverallStatus(analysis);
 
     return {
@@ -60,8 +93,8 @@ export async function searchByBarcode(barcode: string): Promise<ProductResult | 
       name: p.product_name || "Unknown Product",
       brand: p.brands || "Unknown Brand",
       image: p.image_front_url || "",
-      categories: (p.categories_tags || []).map((c: string) => c.replace("en:", "").replace(/-/g, " ")),
-      ingredients,
+      categories,
+      ingredients: allIngredients,
       ingredientsText,
       status,
       summary: generateSummary(analysis, status),
