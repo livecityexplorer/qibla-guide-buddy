@@ -18,6 +18,7 @@ export interface ProductResult {
 }
 
 const OFF_API = "https://world.openfoodfacts.org";
+const OBF_API = "https://world.openbeautyfacts.org";
 
 function parseIngredients(text: string): string[] {
   if (!text) return [];
