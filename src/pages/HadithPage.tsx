@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
-import { ArrowLeft, RefreshCw, Loader2, BookOpen } from "lucide-react";
+import { ArrowLeft, RefreshCw, Loader2, BookOpen, Minus, Plus } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { getRandomHadith, getAllLocalHadiths, HADITH_COLLECTIONS, type HadithData } from "@/services/hadithService";
@@ -13,6 +13,7 @@ const HadithPage = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(false);
   const localHadiths = getAllLocalHadiths();
+  const [textSize, setTextSize] = useState(() => parseInt(localStorage.getItem("hadith-text-size") || "16", 10));
 
   const fetchHadith = async (collection?: string) => {
     setLoading(true);
@@ -34,6 +35,12 @@ const HadithPage = () => {
   const handleCollectionChange = (col: string) => {
     setSelectedCollection(col);
     fetchHadith(col);
+  };
+
+  const adjustSize = (delta: number) => {
+    const newSize = Math.max(12, Math.min(28, textSize + delta));
+    setTextSize(newSize);
+    localStorage.setItem("hadith-text-size", String(newSize));
   };
 
   return (
@@ -65,6 +72,14 @@ const HadithPage = () => {
           ))}
         </div>
 
+        {/* Text Size Control */}
+        <div className="mb-4 flex items-center gap-3 rounded-xl bg-card p-3 border border-border">
+          <span className="text-xs text-muted-foreground">Text Size</span>
+          <button onClick={() => adjustSize(-2)} className="h-7 w-7 rounded-full bg-secondary flex items-center justify-center"><Minus size={12} /></button>
+          <span className="text-xs font-medium text-foreground w-6 text-center">{textSize}</span>
+          <button onClick={() => adjustSize(2)} className="h-7 w-7 rounded-full bg-secondary flex items-center justify-center"><Plus size={12} /></button>
+        </div>
+
         {/* Current Hadith */}
         {loading ? (
           <div className="flex items-center justify-center py-12">
@@ -91,7 +106,7 @@ const HadithPage = () => {
               </div>
             )}
             
-            <p className="text-lg leading-relaxed text-foreground">"{currentHadith.text}"</p>
+            <p className="leading-relaxed text-foreground" style={{ fontSize: `${textSize}px` }}>"{currentHadith.text}"</p>
 
             <div className="mt-6 border-t border-border pt-4 space-y-1">
               {currentHadith.narrator && (
