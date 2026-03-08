@@ -41,6 +41,7 @@ const HalalScannerPage = () => {
     setLoading(true);
     setSearched(true);
     setError("");
+    setResults([]);
     try {
       const data = await searchByName(query.trim());
       setResults(data.products);
@@ -50,7 +51,9 @@ const HalalScannerPage = () => {
           addToHistory({ product: p, scannedAt: new Date().toISOString() });
         });
       }
-    } catch {
+    } catch (err) {
+      console.error("Search error:", err);
+      setError("Search failed. Please check your connection and try again.");
       setResults([]);
     } finally {
       setLoading(false);
