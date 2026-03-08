@@ -374,6 +374,22 @@ const NearbyPage = () => {
     }
   }, [filter, searchRadius]);
 
+  const navigateToPlace = (place: NearbyPlace) => {
+    // Try native geo URI first (works on mobile), fallback to Google Maps
+    const geoUri = `geo:${place.lat},${place.lon}?q=${place.lat},${place.lon}(${encodeURIComponent(place.name)})`;
+    const googleMapsUrl = `https://www.google.com/maps/dir/?api=1&origin=${userLat},${userLon}&destination=${place.lat},${place.lon}&travelmode=driving`;
+    
+    // On mobile, geo: URI opens native maps; on desktop, fallback to Google Maps
+    const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+    if (isMobile) {
+      window.location.href = geoUri;
+      // Fallback after short delay if geo: didn't work
+      setTimeout(() => window.open(googleMapsUrl, "_blank"), 500);
+    } else {
+      window.open(googleMapsUrl, "_blank");
+    }
+  };
+
   const openDirections = (place: NearbyPlace) => {
     window.open(`https://www.openstreetmap.org/directions?from=${userLat},${userLon}&to=${place.lat},${place.lon}`, "_blank");
   };
