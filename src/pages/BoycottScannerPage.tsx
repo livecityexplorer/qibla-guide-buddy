@@ -1,6 +1,6 @@
 import { useState, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { ArrowLeft, ScanLine, ShieldAlert, ShieldCheck, Search, Filter, ChevronDown, ExternalLink } from "lucide-react";
+import { ArrowLeft, ScanLine, ShieldAlert, ShieldCheck, Search, Filter, ChevronDown, ExternalLink, ScanBarcode } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { boycottDirectory, searchBoycottDirectory, getLevelConfig, type BoycottEntry, type BoycottLevel } from "@/data/boycottDirectory";
 
