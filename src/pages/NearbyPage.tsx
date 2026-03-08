@@ -75,7 +75,8 @@ function buildOverpassQuery(lat: number, lon: number, radius: number, type: Plac
 }
 
 function classifyPlace(tags: Record<string, string>): PlaceType {
-  if (tags.amenity === "place_of_worship" || tags.building === "mosque") return "mosque";
+  if (tags.amenity === "place_of_worship" || tags.building === "mosque" || tags.religion === "muslim" || tags.religion === "islam") return "mosque";
+  if (tags.amenity === "community_centre" && (tags.religion === "muslim" || /mosque|masjid|islamic/i.test(tags.name || ""))) return "mosque";
   if (tags.shop === "butcher") return "butcher";
   if (tags.shop) return "shop";
   return "restaurant";
