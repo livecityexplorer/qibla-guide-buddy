@@ -14,6 +14,8 @@ import RamadanPage from "./pages/RamadanPage";
 import BoycottScannerPage from "./pages/BoycottScannerPage";
 import NearbyPage from "./pages/NearbyPage";
 import NotFound from "./pages/NotFound";
+import { QuranPlayerProvider } from "./contexts/QuranPlayerContext";
+import QuranMiniPlayer from "./components/QuranMiniPlayer";
 
 const queryClient = new QueryClient();
 
@@ -22,22 +24,25 @@ const App = () => (
     <TooltipProvider>
       <Toaster />
       <Sonner />
-      <BrowserRouter>
-        <Routes>
-          <Route element={<AppLayout />}>
-            <Route path="/" element={<HomePage />} />
-            <Route path="/prayer" element={<PrayerTimesPage />} />
-            <Route path="/qibla" element={<QiblaPage />} />
-            <Route path="/quran" element={<QuranPage />} />
-            <Route path="/hadith" element={<HadithPage />} />
-            <Route path="/scanner" element={<HalalScannerPage />} />
-            <Route path="/ramadan" element={<RamadanPage />} />
-            <Route path="/boycott" element={<BoycottScannerPage />} />
-            <Route path="/nearby" element={<NearbyPage />} />
-          </Route>
-          <Route path="*" element={<NotFound />} />
-        </Routes>
-      </BrowserRouter>
+      <QuranPlayerProvider>
+        <BrowserRouter>
+          <Routes>
+            <Route element={<AppLayout />}>
+              <Route path="/" element={<HomePage />} />
+              <Route path="/prayer" element={<PrayerTimesPage />} />
+              <Route path="/qibla" element={<QiblaPage />} />
+              <Route path="/quran" element={<QuranPage />} />
+              <Route path="/hadith" element={<HadithPage />} />
+              <Route path="/scanner" element={<HalalScannerPage />} />
+              <Route path="/ramadan" element={<RamadanPage />} />
+              <Route path="/boycott" element={<BoycottScannerPage />} />
+              <Route path="/nearby" element={<NearbyPage />} />
+            </Route>
+            <Route path="*" element={<NotFound />} />
+          </Routes>
+          <QuranMiniPlayer />
+        </BrowserRouter>
+      </QuranPlayerProvider>
     </TooltipProvider>
   </QueryClientProvider>
 );
