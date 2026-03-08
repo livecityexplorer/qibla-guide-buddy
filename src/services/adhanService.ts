@@ -176,7 +176,7 @@ function showAdhanNotification(settings: AdhanSettings): void {
 
   const title = "🕌 Adhan - " + (prayerName || "Prayer Time");
   const body = `It's time for ${prayerName || "prayer"}. May Allah accept your prayers. 🤲`;
-  const options: NotificationOptions = {
+  const options: any = {
     body,
     icon: "/pwa-192x192.png",
     badge: "/pwa-192x192.png",
