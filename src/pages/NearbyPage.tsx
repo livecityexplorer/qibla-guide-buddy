@@ -502,32 +502,42 @@ const NearbyPage = () => {
                 transition={{ delay: Math.min(i * 0.04, 0.5) }}
                 className="rounded-xl bg-card shadow-sm border border-border overflow-hidden"
               >
-                <button
-                  onClick={() => setExpandedId(expandedId === place.id ? null : place.id)}
-                  className="w-full flex items-center gap-4 p-4 text-left"
-                >
-                  <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-secondary text-2xl shrink-0">
-                    {typeConfig[place.type].emoji}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="font-semibold text-foreground truncate">{place.name}</p>
-                    {place.address && (
-                      <p className="text-xs text-muted-foreground truncate">{place.address}</p>
-                    )}
-                    <div className="mt-1 flex items-center gap-3">
-                      <span className="flex items-center gap-1 text-xs text-muted-foreground">
-                        <Navigation size={12} className="text-primary" />
-                        {formatDistance(place.distance)}
-                      </span>
-                      {place.cuisine && (
-                        <span className="text-xs text-muted-foreground truncate">{place.cuisine}</span>
-                      )}
-                      <span className="rounded-full bg-secondary px-2 py-0.5 text-[10px] font-medium text-secondary-foreground">
-                        {typeConfig[place.type].label}
-                      </span>
+                <div className="flex items-center gap-3 p-4">
+                  <button
+                    onClick={() => setExpandedId(expandedId === place.id ? null : place.id)}
+                    className="flex items-center gap-3 flex-1 min-w-0 text-left"
+                  >
+                    <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-secondary text-2xl shrink-0">
+                      {typeConfig[place.type].emoji}
                     </div>
-                  </div>
-                </button>
+                    <div className="flex-1 min-w-0">
+                      <p className="font-semibold text-foreground truncate">{place.name}</p>
+                      {place.address && (
+                        <p className="text-xs text-muted-foreground truncate">{place.address}</p>
+                      )}
+                      <div className="mt-1 flex items-center gap-3">
+                        <span className="flex items-center gap-1 text-xs text-muted-foreground">
+                          <Navigation size={12} className="text-primary" />
+                          {formatDistance(place.distance)}
+                        </span>
+                        {place.cuisine && (
+                          <span className="text-xs text-muted-foreground truncate">{place.cuisine}</span>
+                        )}
+                        <span className="rounded-full bg-secondary px-2 py-0.5 text-[10px] font-medium text-secondary-foreground">
+                          {typeConfig[place.type].label}
+                        </span>
+                      </div>
+                    </div>
+                  </button>
+                  {/* Big Navigate Button */}
+                  <button
+                    onClick={(e) => { e.stopPropagation(); navigateToPlace(place); }}
+                    className="shrink-0 flex flex-col items-center justify-center gap-1 rounded-xl gradient-emerald px-4 py-3 shadow-emerald active:scale-95 transition-transform"
+                  >
+                    <Navigation size={22} className="text-primary-foreground" />
+                    <span className="text-[10px] font-bold text-primary-foreground tracking-wide">GO</span>
+                  </button>
+                </div>
 
                 <AnimatePresence>
                   {expandedId === place.id && (
