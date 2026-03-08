@@ -389,8 +389,12 @@ const CameraScanner = ({ onDetected, onManualEntry }: { onDetected: (code: strin
     start();
     return () => {
       mounted = false;
-      html5QrCodeRef.current?.stop().catch(() => {});
-      html5QrCodeRef.current?.clear().catch(() => {});
+      try {
+        html5QrCodeRef.current?.stop().catch(() => {});
+      } catch {}
+      try {
+        html5QrCodeRef.current?.clear().catch(() => {});
+      } catch {}
     };
   }, [onDetected]);
 
