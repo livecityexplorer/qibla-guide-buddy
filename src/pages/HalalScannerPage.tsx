@@ -97,6 +97,10 @@ const HalalScannerPage = () => {
     setResults([]);
     setSearched(false);
     setManualEntry(false);
+    // Clear saved search when leaving search mode
+    if (m !== "search") {
+      sessionStorage.removeItem("halal_search_state");
+    }
   };
 
   return (
