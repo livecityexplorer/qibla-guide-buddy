@@ -41,6 +41,7 @@ const HalalScannerPage = () => {
     setLoading(true);
     setSearched(true);
     setError("");
+    setResults([]);
     try {
       const data = await searchByName(query.trim());
       setResults(data.products);
@@ -50,7 +51,9 @@ const HalalScannerPage = () => {
           addToHistory({ product: p, scannedAt: new Date().toISOString() });
         });
       }
-    } catch {
+    } catch (err) {
+      console.error("Search error:", err);
+      setError("Search failed. Please check your connection and try again.");
       setResults([]);
     } finally {
       setLoading(false);
@@ -386,7 +389,15 @@ const HalalScannerPage = () => {
                 </div>
               )}
 
-              {!loading && results.length > 0 && (
+              {!loading && error && (
+                <div className="rounded-2xl bg-destructive/10 border border-destructive/30 p-4 text-center">
+                  <XCircle size={24} className="mx-auto text-destructive" />
+                  <p className="mt-2 text-sm text-destructive font-medium">{error}</p>
+                  <button onClick={handleSearch} className="mt-2 text-xs font-medium text-primary">Try again</button>
+                </div>
+              )}
+
+              {!loading && !error && results.length > 0 && (
                 <div className="space-y-2">
                   <p className="text-xs text-muted-foreground font-medium">{results.length} products found</p>
                   {results.map((product, i) => (
