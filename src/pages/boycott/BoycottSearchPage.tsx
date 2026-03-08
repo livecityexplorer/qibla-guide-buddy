@@ -113,7 +113,6 @@ const BoycottSearchPage = () => {
                 placeholder={searchMode === "name" ? "e.g. Coca-Cola, Oreo, Nescafé..." : "Enter barcode number..."}
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
-                onKeyDown={(e) => e.key === "Enter" && handleSearch()}
                 className="flex-1 rounded-xl border border-input bg-background px-4 py-3 text-sm focus:ring-2 focus:ring-primary focus:outline-none"
               />
               {searchMode === "barcode" && (
