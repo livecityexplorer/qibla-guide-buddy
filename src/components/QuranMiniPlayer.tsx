@@ -65,7 +65,11 @@ const QuranMiniPlayer = () => {
             <div className="flex-1 min-w-0">
               <p className="text-sm font-semibold text-foreground truncate">{currentSurahName}</p>
               <p className="text-xs text-muted-foreground">
-                {mode === "surah" ? formatTime(currentTime) + " / " + formatTime(duration) : "Single Ayah"}
+                {mode === "surah" && currentAyah
+                  ? `Ayah ${currentAyah.numberInSurah} · ${formatTime(currentTime)}`
+                  : mode === "surah"
+                  ? formatTime(currentTime) + " / " + formatTime(duration)
+                  : "Single Ayah"}
               </p>
             </div>
 
