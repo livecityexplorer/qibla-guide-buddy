@@ -27,10 +27,27 @@ function buildOverpassQuery(lat: number, lon: number, radius: number, type: Plac
   let filters: string[] = [];
 
   if (type === "all" || type === "mosque") {
+    // Standard OSM tags for mosques
     filters.push(`node["amenity"="place_of_worship"]["religion"="muslim"]${bbox};`);
     filters.push(`way["amenity"="place_of_worship"]["religion"="muslim"]${bbox};`);
+    filters.push(`relation["amenity"="place_of_worship"]["religion"="muslim"]${bbox};`);
+    // Some mappers use "islam" instead of "muslim"
+    filters.push(`node["amenity"="place_of_worship"]["religion"="islam"]${bbox};`);
+    filters.push(`way["amenity"="place_of_worship"]["religion"="islam"]${bbox};`);
+    // Building=mosque tag
     filters.push(`node["building"="mosque"]${bbox};`);
     filters.push(`way["building"="mosque"]${bbox};`);
+    filters.push(`relation["building"="mosque"]${bbox};`);
+    // Name-based search for mosques in multiple languages
+    filters.push(`node["amenity"="place_of_worship"]["name"~"mosque|mosqu[eé]e|masjid|mezquita|moschee|مسجد|cami|mescid|masjed|musalla|jamia|jami",i]${bbox};`);
+    filters.push(`way["amenity"="place_of_worship"]["name"~"mosque|mosqu[eé]e|masjid|mezquita|moschee|مسجد|cami|mescid|masjed|musalla|jamia|jami",i]${bbox};`);
+    // Islamic centers often serve as mosques
+    filters.push(`node["amenity"="place_of_worship"]["name"~"islamic|islami|islam[ıi]c|muslim|centre islamique|centro isl|islamisch",i]${bbox};`);
+    filters.push(`way["amenity"="place_of_worship"]["name"~"islamic|islami|islam[ıi]c|muslim|centre islamique|centro isl|islamisch",i]${bbox};`);
+    // Some mosques are tagged as community centres
+    filters.push(`node["amenity"="community_centre"]["religion"="muslim"]${bbox};`);
+    filters.push(`way["amenity"="community_centre"]["religion"="muslim"]${bbox};`);
+    filters.push(`node["amenity"="community_centre"]["name"~"mosque|masjid|islamic|muslim|مسجد",i]${bbox};`);
   }
   if (type === "all" || type === "restaurant") {
     filters.push(`node["amenity"="restaurant"]["diet:halal"="yes"]${bbox};`);
@@ -58,7 +75,8 @@ function buildOverpassQuery(lat: number, lon: number, radius: number, type: Plac
 }
 
 function classifyPlace(tags: Record<string, string>): PlaceType {
-  if (tags.amenity === "place_of_worship" || tags.building === "mosque") return "mosque";
+  if (tags.amenity === "place_of_worship" || tags.building === "mosque" || tags.religion === "muslim" || tags.religion === "islam") return "mosque";
+  if (tags.amenity === "community_centre" && (tags.religion === "muslim" || /mosque|masjid|islamic/i.test(tags.name || ""))) return "mosque";
   if (tags.shop === "butcher") return "butcher";
   if (tags.shop) return "shop";
   return "restaurant";
@@ -145,13 +163,13 @@ async function searchNearby(lat: number, lon: number, type: PlaceType | "all", r
 // Also search Nominatim for additional results
 async function searchNominatim(lat: number, lon: number, type: PlaceType, radius = 5000): Promise<NearbyPlace[]> {
   const queries: Record<PlaceType, string[]> = {
-    mosque: ["mosque", "masjid", "islamic center"],
+    mosque: ["mosque", "masjid", "islamic center", "mezquita", "mosquée", "مسجد", "cami"],
     restaurant: ["halal restaurant", "halal food"],
     shop: ["halal shop", "halal grocery"],
     butcher: ["halal butcher", "halal meat"],
   };
 
-  const degreeSpread = Math.max(0.1, radius / 111000 * 1.5);
+  const degreeSpread = Math.max(0.15, radius / 111000 * 2);
   const allResults: NearbyPlace[] = [];
 
   try {
@@ -188,6 +206,76 @@ async function searchNominatim(lat: number, lon: number, type: PlaceType, radius
   }
 }
 
+// OpenTripMap API - free source for mosques (religion.place_of_worship.islam)
+async function searchOpenTripMap(lat: number, lon: number, radius: number): Promise<NearbyPlace[]> {
+  try {
+    const res = await fetch(
+      `https://api.opentripmap.com/0.1/en/places/radius?radius=${radius}&lon=${lon}&lat=${lat}&kinds=mosques&format=json&limit=50&apikey=5ae2e3f221c38a28845f05b6aed6fd5e93eecbf2f4d5b909a8c90d31`
+    );
+    if (!res.ok) return [];
+    const data = await res.json();
+    
+    return data
+      .filter((item: any) => item.name)
+      .map((item: any) => ({
+        id: item.xid ? parseInt(item.xid.replace(/\D/g, "").slice(0, 9)) || Math.random() * 100000 : Math.random() * 100000,
+        name: item.name,
+        type: "mosque" as PlaceType,
+        lat: item.point?.lat || 0,
+        lon: item.point?.lon || 0,
+        distance: haversineDistance(lat, lon, item.point?.lat || 0, item.point?.lon || 0),
+        address: "",
+        tags: {},
+      }));
+  } catch {
+    return [];
+  }
+}
+
+// Photon geocoder (Komoot) - another free OSM-based search engine  
+async function searchPhoton(lat: number, lon: number, type: PlaceType, radius: number): Promise<NearbyPlace[]> {
+  const queries: Record<PlaceType, string[]> = {
+    mosque: ["mosque", "masjid", "mezquita"],
+    restaurant: ["halal restaurant"],
+    shop: ["halal shop"],
+    butcher: ["halal butcher"],
+  };
+
+  const allResults: NearbyPlace[] = [];
+  try {
+    for (const q of queries[type]) {
+      const res = await fetch(
+        `https://photon.komoot.io/api/?q=${encodeURIComponent(q)}&lat=${lat}&lon=${lon}&limit=20&lang=en`
+      );
+      if (!res.ok) continue;
+      const data = await res.json();
+
+      for (const feature of data.features || []) {
+        const coords = feature.geometry?.coordinates;
+        if (!coords) continue;
+        const fLon = coords[0];
+        const fLat = coords[1];
+        const dist = haversineDistance(lat, lon, fLat, fLon);
+        if (dist > radius / 1000 * 2) continue;
+        const props = feature.properties || {};
+        allResults.push({
+          id: props.osm_id || Math.floor(Math.random() * 100000),
+          name: props.name || "Unknown",
+          type,
+          lat: fLat,
+          lon: fLon,
+          distance: dist,
+          address: [props.street, props.city, props.country].filter(Boolean).join(", "),
+          tags: {},
+        });
+      }
+    }
+    return allResults;
+  } catch {
+    return [];
+  }
+}
+
 const NearbyPage = () => {
   const navigate = useNavigate();
   const { t } = useTranslation();
@@ -211,32 +299,33 @@ const NearbyPage = () => {
     setLoading(true);
     setError("");
     try {
-      // Fetch from Overpass (main) + Nominatim (supplementary) in parallel
-      // Fetch Overpass first, then Nominatim as fallback for each relevant type
-      let overpassResults: NearbyPlace[] = [];
-      try {
-        overpassResults = await searchNearby(lat, lon, type, searchRadius);
-      } catch (e) {
-        console.warn("Overpass failed, relying on Nominatim:", e);
-      }
-
+      // Launch all API sources in parallel for maximum coverage
       const typesToSearch: PlaceType[] = type === "all" 
         ? ["mosque", "restaurant", "shop", "butcher"] 
         : [type];
-      
-      let nominatimResults: NearbyPlace[] = [];
-      for (const t of typesToSearch) {
-        const results = await searchNominatim(lat, lon, t, searchRadius);
-        nominatimResults.push(...results);
-      }
 
-      // Merge and deduplicate
+      const searchMosques = type === "all" || type === "mosque";
+
+      const [overpassResults, ...otherResults] = await Promise.all([
+        searchNearby(lat, lon, type, searchRadius).catch(() => [] as NearbyPlace[]),
+        // Nominatim for each type
+        ...typesToSearch.map(t => searchNominatim(lat, lon, t, searchRadius).catch(() => [] as NearbyPlace[])),
+        // Photon geocoder for each type
+        ...typesToSearch.map(t => searchPhoton(lat, lon, t, searchRadius).catch(() => [] as NearbyPlace[])),
+        // OpenTripMap specifically for mosques
+        searchMosques ? searchOpenTripMap(lat, lon, searchRadius).catch(() => [] as NearbyPlace[]) : Promise.resolve([] as NearbyPlace[]),
+      ]);
+
+      // Merge and deduplicate all sources
       const merged = [...overpassResults];
       const existingNames = new Set(merged.map((p) => p.name.toLowerCase()));
-      for (const np of nominatimResults) {
-        if (!existingNames.has(np.name.toLowerCase())) {
-          merged.push(np);
-          existingNames.add(np.name.toLowerCase());
+      for (const results of otherResults) {
+        for (const np of results) {
+          const key = np.name.toLowerCase();
+          if (!existingNames.has(key)) {
+            merged.push(np);
+            existingNames.add(key);
+          }
         }
       }
 
