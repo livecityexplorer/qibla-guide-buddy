@@ -111,7 +111,6 @@ function showAdhanNotification(settings: AdhanSettings): void {
         badge: "/favicon.ico",
         tag: "adhan-notification",
         requireInteraction: true,
-        vibrate: [200, 100, 200, 100, 200],
         silent: false,
       });
     });
