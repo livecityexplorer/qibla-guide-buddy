@@ -51,6 +51,8 @@ const HalalScannerPage = () => {
     try {
       const data = await searchByName(query.trim());
       setResults(data.products);
+      // Save search state for back navigation
+      sessionStorage.setItem("halal_search_state", JSON.stringify({ query: query.trim(), results: data.products }));
       const settings = getSettings();
       if (settings.autoSave) {
         data.products.slice(0, 3).forEach(p => {
