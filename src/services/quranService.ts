@@ -2,6 +2,7 @@
 // Docs: https://alquran.cloud/api
 
 const BASE_URL = "https://api.alquran.cloud/v1";
+const QDC_BASE = "https://api.qurancdn.com/api/qdc";
 
 export interface Surah {
   number: number;
@@ -40,6 +41,18 @@ export interface SurahData {
   ayahs: Ayah[];
 }
 
+export interface VerseTiming {
+  verseKey: string;       // e.g. "1:1"
+  timestampFrom: number;  // ms
+  timestampTo: number;    // ms
+}
+
+export interface SurahAudioInfo {
+  audioUrl: string;
+  duration: number;       // ms
+  verseTimings: VerseTiming[];
+}
+
 // Popular translation editions by language
 export const TRANSLATION_EDITIONS: { id: string; label: string; lang: string }[] = [
   { id: "en.asad", label: "English - Muhammad Asad", lang: "en" },
@@ -69,12 +82,12 @@ export const TRANSLATION_EDITIONS: { id: string; label: string; lang: string }[]
 ];
 
 export const RECITERS = [
-  { id: "ar.alafasy", label: "Mishary Rashid Alafasy" },
-  { id: "ar.abdulbasitmurattal", label: "Abdul Basit (Murattal)" },
-  { id: "ar.abdurrahmaansudais", label: "Abdurrahman As-Sudais" },
-  { id: "ar.husary", label: "Mahmoud Khalil Al-Husary" },
-  { id: "ar.minshawi", label: "Mohamed Siddiq El-Minshawi" },
-  { id: "ar.saoodshuraym", label: "Saud Al-Shuraim" },
+  { id: "ar.alafasy", label: "Mishary Rashid Alafasy", qdcId: 7 },
+  { id: "ar.abdulbasitmurattal", label: "Abdul Basit (Murattal)", qdcId: 1 },
+  { id: "ar.abdurrahmaansudais", label: "Abdurrahman As-Sudais", qdcId: 6 },
+  { id: "ar.husary", label: "Mahmoud Khalil Al-Husary", qdcId: 5 },
+  { id: "ar.minshawi", label: "Mohamed Siddiq El-Minshawi", qdcId: 8 },
+  { id: "ar.saoodshuraym", label: "Saud Al-Shuraim", qdcId: 10 },
 ];
 
 async function fetchApi<T>(endpoint: string): Promise<T> {
@@ -109,4 +122,30 @@ export function getAyahAudioUrl(ayahGlobalNumber: number, reciter: string = "ar.
 // Get full surah audio URL from CDN (single continuous file)
 export function getSurahAudioUrl(surahNumber: number, reciter: string = "ar.alafasy"): string {
   return `https://cdn.islamic.network/quran/audio-surah/128/${reciter}/${surahNumber}.mp3`;
+}
+
+// Get QDC reciter ID from our reciter identifier
+function getQdcReciterId(reciter: string): number {
+  const found = RECITERS.find((r) => r.id === reciter);
+  return found?.qdcId ?? 7; // default to Alafasy
+}
+
+// Fetch surah audio info with verse timings from Quran.com CDN
+export async function getSurahAudioWithTimings(surahNumber: number, reciter: string): Promise<SurahAudioInfo> {
+  const qdcId = getQdcReciterId(reciter);
+  const res = await fetch(`${QDC_BASE}/audio/reciters/${qdcId}/audio_files?chapter=${surahNumber}&segments=true`);
+  if (!res.ok) throw new Error(`QDC API error: ${res.status}`);
+  const json = await res.json();
+  const audioFile = json.audio_files?.[0];
+  if (!audioFile) throw new Error("No audio file found");
+
+  return {
+    audioUrl: audioFile.audio_url,
+    duration: audioFile.duration,
+    verseTimings: (audioFile.verse_timings || []).map((vt: any) => ({
+      verseKey: vt.verse_key,
+      timestampFrom: vt.timestamp_from,
+      timestampTo: vt.timestamp_to,
+    })),
+  };
 }
