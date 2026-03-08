@@ -118,7 +118,18 @@ export async function searchByName(query: string, page = 1): Promise<{ products:
       .map((p: any) => {
         const ingredientsText = p.ingredients_text_en || p.ingredients_text || "";
         const ingredients = parseIngredients(ingredientsText);
-        const analysis = analyzeIngredientList(ingredients);
+        const categories = (p.categories_tags || []).slice(0, 3).map((c: string) => c.replace("en:", "").replace(/-/g, " "));
+        
+        // Also check product name and categories for pork
+        const porkFromMeta = detectPorkFromMetadata(p.product_name || "", categories);
+        const allIngredients = [...ingredients];
+        for (const pk of porkFromMeta) {
+          if (!allIngredients.some(i => i.toLowerCase().includes(pk.toLowerCase()))) {
+            allIngredients.push(pk);
+          }
+        }
+        
+        const analysis = analyzeIngredientList(allIngredients);
         const status = getOverallStatus(analysis);
         return {
           id: p.code,
@@ -126,8 +137,8 @@ export async function searchByName(query: string, page = 1): Promise<{ products:
           name: p.product_name,
           brand: p.brands || "Unknown",
           image: p.image_front_small_url || "",
-          categories: (p.categories_tags || []).slice(0, 3).map((c: string) => c.replace("en:", "").replace(/-/g, " ")),
-          ingredients,
+          categories,
+          ingredients: allIngredients,
           ingredientsText,
           status,
           summary: generateSummary(analysis, status),
