@@ -123,9 +123,29 @@ async function _searchBarcodeFromAPI(apiBase: string, barcode: string, source: "
 }
 
 export async function searchByName(query: string, page = 1): Promise<{ products: ProductResult[]; count: number }> {
+  // Query both Open Food Facts and Open Beauty Facts in parallel
+  const [foodResults, beautyResults] = await Promise.all([
+    _searchNameFromAPI(OFF_API, query, page, "openfoodfacts"),
+    _searchNameFromAPI(OBF_API, query, page, "openbeautyfacts"),
+  ]);
+  
+  // Merge results, deduplicate by barcode, food results first
+  const seen = new Set<string>();
+  const merged: ProductResult[] = [];
+  for (const p of [...foodResults.products, ...beautyResults.products]) {
+    if (!seen.has(p.barcode)) {
+      seen.add(p.barcode);
+      merged.push(p);
+    }
+  }
+  
+  return { products: merged, count: foodResults.count + beautyResults.count };
+}
+
+async function _searchNameFromAPI(apiBase: string, query: string, page: number, source: "openfoodfacts" | "openbeautyfacts"): Promise<{ products: ProductResult[]; count: number }> {
   try {
     const res = await fetch(
-      `${OFF_API}/cgi/search.pl?search_terms=${encodeURIComponent(query)}&search_simple=1&action=process&json=1&page=${page}&page_size=20&fields=code,product_name,brands,image_front_small_url,categories_tags,ingredients_text_en,ingredients_text`
+      `${apiBase}/cgi/search.pl?search_terms=${encodeURIComponent(query)}&search_simple=1&action=process&json=1&page=${page}&page_size=20&fields=code,product_name,brands,image_front_small_url,categories_tags,ingredients_text_en,ingredients_text`
     );
     const data = await res.json();
     const products: ProductResult[] = (data.products || [])
@@ -135,7 +155,6 @@ export async function searchByName(query: string, page = 1): Promise<{ products:
         const ingredients = parseIngredients(ingredientsText);
         const categories = (p.categories_tags || []).slice(0, 3).map((c: string) => c.replace("en:", "").replace(/-/g, " "));
         
-        // Also check product name and categories for pork
         const porkFromMeta = detectPorkFromMetadata(p.product_name || "", categories);
         const allIngredients = [...ingredients];
         for (const pk of porkFromMeta) {
@@ -146,6 +165,7 @@ export async function searchByName(query: string, page = 1): Promise<{ products:
         
         const analysis = analyzeIngredientList(allIngredients);
         const status = getOverallStatus(analysis);
+        const productType = source === "openbeautyfacts" ? "cosmetic" as const : detectProductType(categories, p.product_name || "");
         return {
           id: p.code,
           barcode: p.code,
@@ -156,10 +176,11 @@ export async function searchByName(query: string, page = 1): Promise<{ products:
           ingredients: allIngredients,
           ingredientsText,
           status,
-          summary: generateSummary(analysis, status),
+          summary: generateSummary(analysis, status, productType),
           confidence: ingredients.length > 3 ? "analysis-based" : "low",
           analysis,
-          source: "openfoodfacts" as const,
+          source,
+          productType,
         };
       });
     return { products, count: data.count || 0 };
