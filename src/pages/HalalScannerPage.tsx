@@ -21,7 +21,6 @@ type Mode = "home" | "scan" | "search";
 
 const HalalScannerPage = () => {
   const navigate = useNavigate();
-  const [mode, setMode] = useState<Mode>("home");
   // Restore search state from sessionStorage for back navigation
   const savedSearch = sessionStorage.getItem("halal_search_state");
   const savedParsed = savedSearch ? JSON.parse(savedSearch) : null;
