@@ -62,6 +62,7 @@ const App = () => (
               <Route path="/boycott/directory" element={<BoycottDirectoryPage />} />
               <Route path="/boycott/search" element={<BoycottSearchPage />} />
               <Route path="/nearby" element={<NearbyPage />} />
+              <Route path="/profile" element={<ProfilePage />} />
             </Route>
             <Route path="*" element={<NotFound />} />
           </Routes>
