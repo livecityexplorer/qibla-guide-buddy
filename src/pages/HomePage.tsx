@@ -1,4 +1,4 @@
-import { useMemo, useState, useEffect } from "react";
+import { useMemo, useState, useEffect, useRef } from "react";
 import { motion } from "framer-motion";
 import { Clock, BookOpen, Compass, ScanLine, MapPin, Moon, Star, ShieldAlert, CloudSun, MapPinned, Calendar, RotateCcw } from "lucide-react";
 import { useNavigate } from "react-router-dom";
@@ -22,7 +22,6 @@ const DHIKR_OPTIONS = [
   { key: "astaghfirullah", arabic: "أستغفر الله", target: 100 },
 ];
 
-// Daily verse - rotates by day
 const DAILY_VERSES = [
   { arabic: "وَمَن يَتَوَكَّلْ عَلَى ٱللَّهِ فَهُوَ حَسْبُهُۥ", en: "And whoever relies upon Allah – then He is sufficient for him.", ref: "Surah At-Talaq 65:3" },
   { arabic: "إِنَّ مَعَ ٱلْعُسْرِ يُسْرًا", en: "Indeed, with hardship comes ease.", ref: "Surah Ash-Sharh 94:6" },
@@ -42,6 +41,19 @@ const getIslamicDate = () => {
   } catch { return ""; }
 };
 
+function getCountdown(targetTime: string): string {
+  const now = new Date();
+  const [h, m] = targetTime.split(":").map(Number);
+  const target = new Date(now);
+  target.setHours(h, m, 0, 0);
+  if (target <= now) target.setDate(target.getDate() + 1);
+  const diff = target.getTime() - now.getTime();
+  const hours = Math.floor(diff / 3600000);
+  const mins = Math.floor((diff % 3600000) / 60000);
+  const secs = Math.floor((diff % 60000) / 1000);
+  return `${hours.toString().padStart(2, "0")}:${mins.toString().padStart(2, "0")}:${secs.toString().padStart(2, "0")}`;
+}
+
 const HomePage = () => {
   const navigate = useNavigate();
   const { t } = useTranslation();
@@ -51,10 +63,9 @@ const HomePage = () => {
   const dailyHadith = useMemo(() => getDailyHadith(), []);
   const dayOfYear = useMemo(() => Math.floor((Date.now() - new Date(new Date().getFullYear(), 0, 0).getTime()) / 86400000), []);
   const dailyVerse = DAILY_VERSES[dayOfYear % DAILY_VERSES.length];
-
-  // Dhikr counter state
   const [selectedDhikr, setSelectedDhikr] = useState(0);
   const [dhikrCount, setDhikrCount] = useState(0);
+  const [countdown, setCountdown] = useState("");
 
   const QUICK_ACTIONS = [
     { label: t("home.prayerTimes"), icon: Clock, path: "/prayer" },
@@ -76,6 +87,15 @@ const HomePage = () => {
     }
     return PRAYER_TIMES[0];
   }, []);
+
+  // Countdown timer
+  useEffect(() => {
+    setCountdown(getCountdown(nextPrayer.time));
+    const interval = setInterval(() => {
+      setCountdown(getCountdown(nextPrayer.time));
+    }, 1000);
+    return () => clearInterval(interval);
+  }, [nextPrayer.time]);
 
   useEffect(() => {
     if (navigator.geolocation) {
@@ -154,7 +174,7 @@ const HomePage = () => {
           </div>
         </motion.div>
 
-        {/* Next Prayer Card */}
+        {/* Next Prayer Card with Countdown */}
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.25 }} className="relative overflow-hidden rounded-2xl gradient-emerald p-5 glow-emerald">
           <div className="absolute inset-0 islamic-pattern opacity-30" />
           <div className="relative">
@@ -164,7 +184,10 @@ const HomePage = () => {
                 <h2 className="text-3xl font-bold text-primary-foreground">{t(nextPrayer.nameKey)}</h2>
                 <p className="text-lg text-primary-foreground/80">{nextPrayer.time}</p>
               </div>
-              <span className="text-4xl">{nextPrayer.icon}</span>
+              <div className="text-right">
+                <span className="text-4xl">{nextPrayer.icon}</span>
+                <p className="text-lg font-bold text-primary-foreground tabular-nums mt-1">{countdown}</p>
+              </div>
             </div>
           </div>
         </motion.div>

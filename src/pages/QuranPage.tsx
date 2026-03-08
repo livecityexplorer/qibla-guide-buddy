@@ -1,6 +1,6 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { ArrowLeft, Search, Play, Pause, Volume2, Globe, Loader2 } from "lucide-react";
+import { ArrowLeft, Search, Play, Pause, Volume2, Globe, Loader2, BookmarkCheck, Minus, Plus } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useQuranPlayer } from "@/contexts/QuranPlayerContext";
@@ -15,6 +15,25 @@ import {
   type SurahData,
 } from "@/services/quranService";
 
+interface QuranBookmark {
+  surahNumber: number;
+  surahName: string;
+  ayahIndex: number;
+  ayahNumber: number;
+  timestamp: number;
+}
+
+function getBookmark(): QuranBookmark | null {
+  try {
+    const raw = localStorage.getItem("quran-bookmark");
+    return raw ? JSON.parse(raw) : null;
+  } catch { return null; }
+}
+
+function saveBookmark(b: QuranBookmark) {
+  localStorage.setItem("quran-bookmark", JSON.stringify(b));
+}
+
 const QuranPage = () => {
   const navigate = useNavigate();
   const player = useQuranPlayer();
@@ -28,6 +47,9 @@ const QuranPage = () => {
   );
   const [loading, setLoading] = useState(false);
   const [loadingSurahs, setLoadingSurahs] = useState(true);
+  const [bookmark, setBookmark] = useState<QuranBookmark | null>(getBookmark);
+  const [arabicSize, setArabicSize] = useState(() => parseInt(localStorage.getItem("quran-arabic-size") || "24", 10));
+  const [translationSize, setTranslationSize] = useState(() => parseInt(localStorage.getItem("quran-trans-size") || "14", 10));
 
   // Load all surahs on mount
   useEffect(() => {
@@ -68,11 +90,39 @@ const QuranPage = () => {
   const handlePlayAyah = (ayah: Ayah, index: number) => {
     if (!arabicData) return;
     player.play(ayah, arabicData.englishName, arabicData.ayahs, index);
+    // Save bookmark
+    const bm: QuranBookmark = { surahNumber: arabicData.number, surahName: arabicData.englishName, ayahIndex: index, ayahNumber: ayah.numberInSurah, timestamp: Date.now() };
+    saveBookmark(bm);
+    setBookmark(bm);
   };
 
   const handlePlayAll = () => {
     if (!arabicData) return;
     player.playAll(arabicData.ayahs, arabicData.englishName);
+  };
+
+  // Save reading position on scroll/click
+  const handleAyahVisible = useCallback((ayah: Ayah, index: number) => {
+    if (!arabicData) return;
+    const bm: QuranBookmark = { surahNumber: arabicData.number, surahName: arabicData.englishName, ayahIndex: index, ayahNumber: ayah.numberInSurah, timestamp: Date.now() };
+    saveBookmark(bm);
+    setBookmark(bm);
+  }, [arabicData]);
+
+  const handleResumeBookmark = () => {
+    if (bookmark) setSelectedSurah(bookmark.surahNumber);
+  };
+
+  const adjustSize = (type: "arabic" | "trans", delta: number) => {
+    if (type === "arabic") {
+      const newSize = Math.max(16, Math.min(40, arabicSize + delta));
+      setArabicSize(newSize);
+      localStorage.setItem("quran-arabic-size", String(newSize));
+    } else {
+      const newSize = Math.max(10, Math.min(24, translationSize + delta));
+      setTranslationSize(newSize);
+      localStorage.setItem("quran-trans-size", String(newSize));
+    }
   };
 
   return (
@@ -109,6 +159,25 @@ const QuranPage = () => {
       <AnimatePresence mode="wait">
         {selectedSurah === null ? (
           <motion.div key="list" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="px-4 -mt-3 pb-6">
+            {/* Resume bookmark */}
+            {bookmark && (
+              <button
+                onClick={handleResumeBookmark}
+                className="mb-3 w-full flex items-center gap-3 rounded-xl bg-primary/10 border border-primary/20 p-3 text-left transition-all active:scale-[0.98]"
+              >
+                <BookmarkCheck size={20} className="text-primary shrink-0" />
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-semibold text-foreground">Continue Reading</p>
+                  <p className="text-xs text-muted-foreground truncate">
+                    {bookmark.surahName} · Ayah {bookmark.ayahNumber}
+                  </p>
+                </div>
+                <span className="text-xs text-muted-foreground shrink-0">
+                  {new Date(bookmark.timestamp).toLocaleDateString()}
+                </span>
+              </button>
+            )}
+
             {/* Search */}
             <div className="relative mb-3">
               <Search size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
@@ -192,7 +261,7 @@ const QuranPage = () => {
                   </button>
                 </div>
 
-                {/* Translation selector inline */}
+                {/* Text Size + Translation selector */}
                 <div className="flex items-center gap-2">
                   <Globe size={14} className="text-muted-foreground shrink-0" />
                   <Select value={translationEdition} onValueChange={handleTranslationChange}>
@@ -209,6 +278,23 @@ const QuranPage = () => {
                   </Select>
                 </div>
 
+                {/* Text Size Controls */}
+                <div className="flex items-center gap-4 rounded-xl bg-card p-3 border border-border">
+                  <div className="flex-1 flex items-center gap-2">
+                    <span className="text-xs text-muted-foreground shrink-0">Arabic</span>
+                    <button onClick={() => adjustSize("arabic", -2)} className="h-7 w-7 rounded-full bg-secondary flex items-center justify-center"><Minus size={12} /></button>
+                    <span className="text-xs font-medium text-foreground w-6 text-center">{arabicSize}</span>
+                    <button onClick={() => adjustSize("arabic", 2)} className="h-7 w-7 rounded-full bg-secondary flex items-center justify-center"><Plus size={12} /></button>
+                  </div>
+                  <div className="w-px h-6 bg-border" />
+                  <div className="flex-1 flex items-center gap-2">
+                    <span className="text-xs text-muted-foreground shrink-0">Trans</span>
+                    <button onClick={() => adjustSize("trans", -1)} className="h-7 w-7 rounded-full bg-secondary flex items-center justify-center"><Minus size={12} /></button>
+                    <span className="text-xs font-medium text-foreground w-6 text-center">{translationSize}</span>
+                    <button onClick={() => adjustSize("trans", 1)} className="h-7 w-7 rounded-full bg-secondary flex items-center justify-center"><Plus size={12} /></button>
+                  </div>
+                </div>
+
                 {/* Ayahs */}
                 {arabicData.ayahs.map((ayah, i) => {
                   const translation = translationData?.ayahs?.[i];
@@ -219,6 +305,7 @@ const QuranPage = () => {
                       initial={{ opacity: 0, y: 10 }}
                       animate={{ opacity: 1, y: 0 }}
                       transition={{ delay: Math.min(i * 0.03, 1) }}
+                      onClick={() => handleAyahVisible(ayah, i)}
                       className={`rounded-xl p-5 shadow-sm transition-colors ${
                         isCurrentlyPlaying ? "bg-secondary border-2 border-primary/30" : "bg-card"
                       }`}
@@ -228,7 +315,7 @@ const QuranPage = () => {
                           {ayah.numberInSurah}
                         </span>
                         <button
-                          onClick={() => handlePlayAyah(ayah, i)}
+                          onClick={(e) => { e.stopPropagation(); handlePlayAyah(ayah, i); }}
                           className={`p-2 rounded-full transition-colors ${
                             isCurrentlyPlaying ? "gradient-emerald" : "bg-secondary hover:bg-secondary/80"
                           }`}
@@ -240,9 +327,9 @@ const QuranPage = () => {
                           )}
                         </button>
                       </div>
-                      <p className="text-right text-2xl leading-[2.2] font-arabic text-foreground">{ayah.text}</p>
+                      <p className="text-right leading-[2.2] font-arabic text-foreground" style={{ fontSize: `${arabicSize}px` }}>{ayah.text}</p>
                       {translation && (
-                        <p className="mt-3 text-sm leading-relaxed text-muted-foreground border-t border-border pt-3">
+                        <p className="mt-3 leading-relaxed text-muted-foreground border-t border-border pt-3" style={{ fontSize: `${translationSize}px` }}>
                           {translation.text}
                         </p>
                       )}
