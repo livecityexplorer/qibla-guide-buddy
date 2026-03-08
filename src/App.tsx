@@ -22,6 +22,8 @@ import SettingsPage from "./pages/halal-scanner/SettingsPage";
 import RamadanPage from "./pages/RamadanPage";
 import BoycottScannerPage from "./pages/BoycottScannerPage";
 import BoycottScanPage from "./pages/boycott/BoycottScanPage";
+import BoycottDirectoryPage from "./pages/boycott/BoycottDirectoryPage";
+import BoycottSearchPage from "./pages/boycott/BoycottSearchPage";
 import NearbyPage from "./pages/NearbyPage";
 import NotFound from "./pages/NotFound";
 import { QuranPlayerProvider } from "./contexts/QuranPlayerContext";
@@ -56,6 +58,8 @@ const App = () => (
               <Route path="/ramadan" element={<RamadanPage />} />
               <Route path="/boycott" element={<BoycottScannerPage />} />
               <Route path="/boycott/scan" element={<BoycottScanPage />} />
+              <Route path="/boycott/directory" element={<BoycottDirectoryPage />} />
+              <Route path="/boycott/search" element={<BoycottSearchPage />} />
               <Route path="/nearby" element={<NearbyPage />} />
             </Route>
             <Route path="*" element={<NotFound />} />

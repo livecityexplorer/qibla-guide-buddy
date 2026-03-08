@@ -88,6 +88,43 @@ export async function lookupBarcode(barcode: string): Promise<ProductInfo | null
   return null;
 }
 
+/**
+ * Search products by name/keyword via Open Food Facts search API.
+ * Returns an array of products found.
+ */
+export async function searchProductsByName(query: string): Promise<ProductInfo[]> {
+  const results: ProductInfo[] = [];
+  const searchApis = [
+    { base: "https://world.openfoodfacts.org/cgi/search.pl", source: "openfoodfacts" as const },
+    { base: "https://world.openbeautyfacts.org/cgi/search.pl", source: "openbeautyfacts" as const },
+    { base: "https://world.openpetfoodfacts.org/cgi/search.pl", source: "openpetfoodfacts" as const },
+  ];
+
+  const fetches = searchApis.map(async ({ base, source }) => {
+    try {
+      const url = `${base}?search_terms=${encodeURIComponent(query)}&search_simple=1&action=process&json=1&page_size=10`;
+      const res = await fetch(url, {
+        headers: { "User-Agent": "MuslimCompanionApp/1.0" },
+      });
+      if (!res.ok) return [];
+      const data = await res.json();
+      const products = (data.products || [])
+        .map((p: any) => extractProduct({ product: p }, source))
+        .filter(Boolean) as ProductInfo[];
+      return products;
+    } catch {
+      return [];
+    }
+  });
+
+  const allResults = await Promise.all(fetches);
+  for (const batch of allResults) {
+    results.push(...batch);
+  }
+
+  return results;
+}
+
 export function matchWithBoycott(product: ProductInfo): BoycottScanResult {
   const brandLower = product.brand.toLowerCase();
   const nameLower = product.name.toLowerCase();
