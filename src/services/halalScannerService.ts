@@ -73,8 +73,15 @@ function detectPorkFromMetadata(name: string, categories: string[]): string[] {
 }
 
 export async function searchByBarcode(barcode: string): Promise<ProductResult | null> {
+  // Try Open Food Facts first, then Open Beauty Facts
+  const result = await _searchBarcodeFromAPI(OFF_API, barcode, "openfoodfacts");
+  if (result) return result;
+  return _searchBarcodeFromAPI(OBF_API, barcode, "openbeautyfacts");
+}
+
+async function _searchBarcodeFromAPI(apiBase: string, barcode: string, source: "openfoodfacts" | "openbeautyfacts"): Promise<ProductResult | null> {
   try {
-    const res = await fetch(`${OFF_API}/api/v2/product/${barcode}?fields=code,product_name,brands,image_front_url,categories_tags,ingredients_text_en,ingredients_text`);
+    const res = await fetch(`${apiBase}/api/v2/product/${barcode}?fields=code,product_name,brands,image_front_url,categories_tags,ingredients_text_en,ingredients_text`);
     const data = await res.json();
     if (data.status === 0 || !data.product) return null;
     const p = data.product;
@@ -82,7 +89,6 @@ export async function searchByBarcode(barcode: string): Promise<ProductResult | 
     const ingredients = parseIngredients(ingredientsText);
     const categories = (p.categories_tags || []).map((c: string) => c.replace("en:", "").replace(/-/g, " "));
     
-    // Also check product name and categories for pork
     const porkFromMeta = detectPorkFromMetadata(p.product_name || "", categories);
     const allIngredients = [...ingredients];
     for (const pk of porkFromMeta) {
@@ -93,6 +99,7 @@ export async function searchByBarcode(barcode: string): Promise<ProductResult | 
     
     const analysis = analyzeIngredientList(allIngredients);
     const status = getOverallStatus(analysis);
+    const productType = source === "openbeautyfacts" ? "cosmetic" as const : detectProductType(categories, p.product_name || "");
 
     return {
       id: p.code || barcode,
@@ -104,10 +111,11 @@ export async function searchByBarcode(barcode: string): Promise<ProductResult | 
       ingredients: allIngredients,
       ingredientsText,
       status,
-      summary: generateSummary(analysis, status),
+      summary: generateSummary(analysis, status, productType),
       confidence: ingredients.length > 3 ? "analysis-based" : "low",
       analysis,
-      source: "openfoodfacts",
+      source,
+      productType,
     };
   } catch {
     return null;
