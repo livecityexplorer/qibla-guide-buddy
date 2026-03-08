@@ -748,6 +748,112 @@ export const ingredientDatabase: IngredientInfo[] = [
   },
 ];
 
+// Comprehensive pork/swine keyword list (international, multilingual)
+const HARAM_PORK_KEYWORDS: string[] = [
+  // English
+  "pork", "pig", "swine", "ham", "bacon", "prosciutto", "pancetta", "salami",
+  "pepperoni", "chorizo", "sausage casing", "porcine", "lard", "lardon", "lardons",
+  "chicharron", "chicharrones", "crackling", "pork rind", "pork skin", "pork belly",
+  "pork loin", "pork chop", "pork shoulder", "pork ribs", "pork tenderloin",
+  "pork sausage", "pork meat", "pork fat", "pork gelatin", "pork extract",
+  "pork broth", "pork stock", "pork liver", "pork kidney", "pork intestine",
+  "pig fat", "pig skin", "pig meat", "pig liver", "pig blood",
+  "black pudding", "blood sausage", "bratwurst", "frankfurter", "hot dog",
+  "mortadella", "sopressata", "coppa", "capicola", "guanciale",
+  "jambon", "jamón", "serrano", "iberico", "ibérico",
+  // Spanish
+  "cerdo", "puerco", "tocino", "manteca de cerdo", "jamón serrano",
+  "jamón ibérico", "lomo", "morcilla", "butifarra", "longaniza",
+  "carne de cerdo", "costilla de cerdo", "chuleta de cerdo",
+  // French
+  "porc", "cochon", "saucisson", "rillettes", "pâté", "andouille",
+  "andouillette", "boudin", "boudin noir", "jambon cru", "jambon cuit",
+  "lard fumé", "saindoux", "graisse de porc", "viande de porc",
+  // German
+  "schwein", "schweinefleisch", "schinken", "speck", "wurst",
+  "bratwurst", "leberwurst", "blutwurst", "mettwurst", "knackwurst",
+  "schweineschmalz", "schweinebauch", "schweinekotelett",
+  // Italian
+  "maiale", "suino", "carne suina", "carne di maiale", "strutto",
+  "pancetta", "prosciutto crudo", "prosciutto cotto", "cotechino",
+  "zampone", "salame", "nduja", "grasso di maiale",
+  // Portuguese
+  "porco", "suíno", "presunto", "linguiça", "chouriço",
+  "toucinho", "banha", "carne de porco", "lombo de porco",
+  // Dutch
+  "varken", "varkensvlees", "varkensvet", "ham", "spek",
+  // Turkish
+  "domuz", "domuz eti", "domuz yağı", "jambon",
+  // Arabic
+  "خنزير", "لحم خنزير", "دهن خنزير", "شحم خنزير",
+  // Malay/Indonesian
+  "babi", "daging babi", "lemak babi",
+  // Hindi/Urdu
+  "सूअर", "خنزیر", "سور",
+  // Chinese (pinyin)
+  "zhu rou", "zhū ròu",
+  // Japanese
+  "豚", "豚肉", "ポーク",
+  // Korean
+  "돼지", "돼지고기",
+  // Thai
+  "หมู",
+  // Russian
+  "свинина", "свиной", "сало",
+  // Polish
+  "wieprzowina", "wieprzowy", "szynka", "boczek", "słonina",
+  // Generic terms that indicate pork
+  "porcina", "porcino", "suidae",
+];
+
+function isPorkRelated(text: string): boolean {
+  const lower = text.toLowerCase().trim();
+  return HARAM_PORK_KEYWORDS.some(keyword => {
+    const kw = keyword.toLowerCase();
+    // Exact match or word boundary match
+    if (lower === kw) return true;
+    // Check if keyword appears as a word in the text
+    const regex = new RegExp(`\\b${kw.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`, 'i');
+    if (regex.test(lower)) return true;
+    // For non-latin scripts, simple includes
+    if (kw.length > 1 && !/^[a-z\s-]+$/.test(kw) && lower.includes(kw)) return true;
+    return false;
+  });
+}
+
+// The pork IngredientInfo used when pork is detected
+const PORK_INFO: IngredientInfo = {
+  id: "pork",
+  name: "Pork / Swine",
+  eNumbers: [],
+  otherNames: HARAM_PORK_KEYWORDS.slice(0, 30),
+  status: "haram",
+  category: "Animal-Derived",
+  source: "Pig (Sus scrofa domesticus)",
+  description: "Any meat, fat, byproduct, or derivative from pigs. This is one of the most clearly forbidden foods in Islam.",
+  scientificDescription: "Pork refers to meat and all edible parts from domestic pigs (Sus scrofa domesticus). Includes all cuts, organs, fat, skin, blood, and processed products.",
+  islamicRuling: "Absolutely Haram by unanimous consensus of all scholars. Explicitly mentioned in the Quran multiple times. No scholarly disagreement exists.",
+  whyProblematic: "Pork and all its derivatives are explicitly and clearly forbidden in the Quran. This is one of the most fundamental dietary prohibitions in Islam.",
+  halalAlternatives: ["Halal beef", "Halal lamb", "Halal chicken", "Halal turkey", "Halal goat", "Fish", "Vegetarian alternatives"],
+  commonProducts: ["Ham", "Bacon", "Sausages", "Hot dogs", "Pepperoni", "Salami", "Prosciutto", "Pork chops", "Spare ribs", "Pork belly"],
+  howToIdentify: ["Pork", "Ham", "Bacon", "Swine", "Pig", "Porcine", "Lard", "Cerdo", "Porc", "Schwein", "Maiale", "Porco"],
+  scholarlyOpinions: {
+    hanafi: "Unanimously Haram — no disagreement whatsoever.",
+    maliki: "Unanimously Haram.",
+    shafii: "Unanimously Haram.",
+    hanbali: "Unanimously Haram.",
+  },
+  quranicReferences: [
+    { verse: "Al-Baqarah 2:173", arabic: "إِنَّمَا حَرَّمَ عَلَيْكُمُ ٱلْمَيْتَةَ وَٱلدَّمَ وَلَحْمَ ٱلْخِنزِيرِ", translation: "He has only forbidden to you dead animals, blood, the flesh of swine..." },
+    { verse: "Al-Ma'idah 5:3", arabic: "حُرِّمَتْ عَلَيْكُمُ ٱلْمَيْتَةُ وَٱلدَّمُ وَلَحْمُ ٱلْخِنزِيرِ", translation: "Prohibited to you are dead animals, blood, the flesh of swine..." },
+    { verse: "Al-An'am 6:145", arabic: "أَوْ لَحْمَ خِنزِيرٍ فَإِنَّهُ رِجْسٌ", translation: "...or the flesh of swine - for indeed, it is impure..." },
+    { verse: "An-Nahl 16:115", arabic: "إِنَّمَا حَرَّمَ عَلَيْكُمُ ٱلْمَيْتَةَ وَٱلدَّمَ وَلَحْمَ ٱلْخِنزِيرِ", translation: "He has only forbidden to you dead animals, blood, the flesh of swine..." },
+  ],
+  hadithReferences: [
+    { text: "Allah and His Messenger have forbidden the sale of alcohol, dead animals, pigs, and idols.", source: "Sahih al-Bukhari" },
+  ],
+};
+
 // Quick lookup maps
 export const ingredientByName = new Map(ingredientDatabase.map(i => [i.name.toLowerCase(), i]));
 export const ingredientById = new Map(ingredientDatabase.map(i => [i.id, i]));
@@ -757,6 +863,10 @@ export const ingredientByENumber = new Map(
 
 export function findIngredient(query: string): IngredientInfo | undefined {
   const q = query.toLowerCase().trim();
+  
+  // First check pork keywords — highest priority
+  if (isPorkRelated(q)) return PORK_INFO;
+  
   return ingredientById.get(q) 
     || ingredientByName.get(q) 
     || ingredientByENumber.get(q)
