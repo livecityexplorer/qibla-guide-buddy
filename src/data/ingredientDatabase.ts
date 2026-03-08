@@ -923,7 +923,7 @@ export const ingredientDatabase: IngredientInfo[] = [
 
 // Comprehensive pork/swine keyword list (international, multilingual)
 // Includes food AND cosmetic/personal care pork-derived terms
-const HARAM_PORK_KEYWORDS: string[] = [
+export const HARAM_PORK_KEYWORDS: string[] = [
   // English - Food
   "pork", "pig", "swine", "ham", "bacon", "prosciutto", "pancetta", "salami",
   "pepperoni", "chorizo", "sausage casing", "porcine", "lard", "lardon", "lardons",
