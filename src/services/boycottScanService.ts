@@ -93,28 +93,24 @@ export async function lookupBarcode(barcode: string): Promise<ProductInfo | null
 export async function searchProductsByName(query: string): Promise<ProductInfo[]> {
   const results: ProductInfo[] = [];
   const queryLower = query.toLowerCase().trim();
+
+  // Use the v1 CGI search endpoint which actually filters by search_terms (v2 doesn't)
   const searchApis = [
-    { base: "https://world.openfoodfacts.org/api/v2/search", source: "openfoodfacts" as const },
-    { base: "https://world.openbeautyfacts.org/api/v2/search", source: "openbeautyfacts" as const },
-    { base: "https://world.openpetfoodfacts.org/api/v2/search", source: "openpetfoodfacts" as const },
+    { base: "https://world.openfoodfacts.org/cgi/search.pl", source: "openfoodfacts" as const },
+    { base: "https://world.openbeautyfacts.org/cgi/search.pl", source: "openbeautyfacts" as const },
+    { base: "https://world.openpetfoodfacts.org/cgi/search.pl", source: "openpetfoodfacts" as const },
   ];
 
   const fetches = searchApis.map(async ({ base, source }) => {
     try {
-      const url = `${base}?search_terms=${encodeURIComponent(query)}&page_size=20&fields=code,product_name,product_name_en,brands,manufacturing_places,manufacturer,categories,image_url,image_front_url,image_front_small_url,ingredients_text,ingredients_text_en,origins,countries,stores,nutriscore_grade,nova_group,quantity,packaging,labels`;
+      const url = `${base}?search_terms=${encodeURIComponent(query)}&search_simple=1&action=process&json=1&page_size=20&fields=code,product_name,product_name_en,brands,manufacturing_places,manufacturer,categories,image_url,image_front_url,image_front_small_url,ingredients_text,ingredients_text_en,origins,countries,stores,nutriscore_grade,nova_group,quantity,packaging,labels`;
       const res = await fetch(url);
       if (!res.ok) return [];
       const data = await res.json();
       const products = (data.products || [])
         .map((p: any) => extractProduct({ product: { ...p, code: p.code } }, source))
         .filter(Boolean) as ProductInfo[];
-      // Filter to only include products that actually match the query in name or brand
-      return products.filter((p) => {
-        const name = (p.name || "").toLowerCase();
-        const brand = (p.brand || "").toLowerCase();
-        const categories = (p.categories || "").toLowerCase();
-        return name.includes(queryLower) || brand.includes(queryLower) || categories.includes(queryLower) || queryLower.includes(brand) || queryLower.includes(name);
-      });
+      return products;
     } catch {
       return [];
     }
