@@ -42,7 +42,7 @@ export default defineConfig(({ mode }) => ({
         description: "Your complete Islamic lifestyle companion — Prayer times with Adhan alerts, Quran, Qibla, Halal Scanner, and more",
         theme_color: "#047857",
         background_color: "#0c0a09",
-        display: "standalone",
+        display: "fullscreen",
         orientation: "portrait",
         start_url: "/",
         scope: "/",
