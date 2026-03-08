@@ -4,6 +4,7 @@ export interface AdhanSettings {
   enabled: boolean;
   selectedAdhan: string;
   volume: number;
+  preReminder: boolean; // 10 min before reminder
   prayers: {
     Fajr: boolean;
     Sunrise: boolean;
@@ -26,6 +27,7 @@ const DEFAULT_SETTINGS: AdhanSettings = {
   enabled: false,
   selectedAdhan: "adhan-mishary",
   volume: 0.8,
+  preReminder: true,
   prayers: {
     Fajr: true,
     Sunrise: false,
@@ -46,6 +48,62 @@ const PRAYER_SCHEDULE: Record<string, string> = {
   Isha: "19:42",
 };
 
+// Beautiful pre-reminder messages for each prayer
+const PRE_REMINDER_MESSAGES: Record<string, { title: string; body: string }> = {
+  Fajr: {
+    title: "🌙 Fajr in 10 minutes",
+    body: "The dawn is approaching. Prepare your heart for the most blessed prayer. \"Prayer is better than sleep.\" 🤲",
+  },
+  Sunrise: {
+    title: "🌅 Sunrise in 10 minutes",
+    body: "The sun is about to rise. A beautiful new day awaits you. 🌄",
+  },
+  Dhuhr: {
+    title: "☀️ Dhuhr in 10 minutes",
+    body: "Midday prayer approaches. Take a moment to pause and connect with Allah. \"Verily, in the remembrance of Allah do hearts find rest.\" 🕌",
+  },
+  Asr: {
+    title: "🌤 Asr in 10 minutes",
+    body: "The afternoon prayer is near. The Prophet ﷺ said: \"Whoever misses Asr prayer, it is as if they lost their family and wealth.\" 🤲",
+  },
+  Maghrib: {
+    title: "🌅 Maghrib in 10 minutes",
+    body: "The sun is setting. Prepare for Maghrib prayer. May Allah fill your evening with barakah and peace. ✨",
+  },
+  Isha: {
+    title: "🌙 Isha in 10 minutes",
+    body: "The night prayer approaches. End your day in the remembrance of Allah. \"And during the night, prostrate to Him and glorify Him.\" 🌟",
+  },
+};
+
+// At-time messages
+const PRAYER_TIME_MESSAGES: Record<string, { title: string; body: string }> = {
+  Fajr: {
+    title: "🕌 Allahu Akbar — Fajr",
+    body: "It's time for Fajr prayer. Rise and shine for the sake of Allah! May He accept your worship. 🤲",
+  },
+  Sunrise: {
+    title: "🌅 Sunrise — Ishraq Time",
+    body: "The sun has risen. Time for Ishraq prayer if you wish. Have a blessed day! ☀️",
+  },
+  Dhuhr: {
+    title: "🕌 Allahu Akbar — Dhuhr",
+    body: "It's time for Dhuhr prayer. Pause your day and stand before your Lord. May Allah accept your salah. 🤲",
+  },
+  Asr: {
+    title: "🕌 Allahu Akbar — Asr",
+    body: "It's time for Asr prayer. Guard your prayer, especially the middle prayer. May Allah bless your efforts. 🤲",
+  },
+  Maghrib: {
+    title: "🕌 Allahu Akbar — Maghrib",
+    body: "It's time for Maghrib prayer. The sun has set — break your fast if fasting and pray. Barakallahu feek. 🤲",
+  },
+  Isha: {
+    title: "🕌 Allahu Akbar — Isha",
+    body: "It's time for Isha prayer. Complete your daily prayers and rest with a peaceful heart. May Allah grant you a blessed night. 🌙",
+  },
+};
+
 export function getAdhanSettings(): AdhanSettings {
   try {
     const stored = localStorage.getItem(STORAGE_KEY);
@@ -60,7 +118,6 @@ export function getAdhanSettings(): AdhanSettings {
 export function saveAdhanSettings(settings: AdhanSettings): void {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(settings));
   scheduleAdhan(settings);
-  // Sync to service worker for background scheduling
   syncSettingsToSW(settings);
 }
 
@@ -85,22 +142,17 @@ export function playAdhan(settings: AdhanSettings): void {
   audio.volume = settings.volume;
   audio.loop = false;
 
-  // Request wake lock to keep screen/audio alive during playback
   requestWakeLock();
 
   const playPromise = audio.play();
   if (playPromise) {
     playPromise.catch((err) => {
       console.warn("Audio playback blocked:", err);
-      // Fallback: trigger notification with vibration from SW
       triggerSWNotification(settings);
     });
   }
 
-  // Release wake lock when audio ends
   audio.addEventListener("ended", () => releaseWakeLock(), { once: true });
-
-  // Also fire notification
   showAdhanNotification(settings);
 }
 
@@ -112,7 +164,7 @@ export function stopAdhan(): void {
   releaseWakeLock();
 }
 
-// ─── Wake Lock (keeps audio playing with screen off) ───
+// ─── Wake Lock ───
 
 async function requestWakeLock() {
   try {
@@ -172,15 +224,14 @@ function getCurrentPrayerName(now: Date): string | null {
 function showAdhanNotification(settings: AdhanSettings): void {
   if (!isNotificationSupported() || Notification.permission !== "granted") return;
   const now = new Date();
-  const prayerName = getCurrentPrayerName(now);
+  const prayerName = getCurrentPrayerName(now) || "Prayer";
+  const msg = PRAYER_TIME_MESSAGES[prayerName] || { title: `🕌 ${prayerName} — Time to Pray`, body: `It's time for ${prayerName}. May Allah accept your prayers. 🤲` };
 
-  const title = "🕌 Adhan - " + (prayerName || "Prayer Time");
-  const body = `It's time for ${prayerName || "prayer"}. May Allah accept your prayers. 🤲`;
   const options: any = {
-    body,
+    body: msg.body,
     icon: "/pwa-192x192.png",
     badge: "/pwa-192x192.png",
-    tag: "adhan-" + (prayerName || "prayer"),
+    tag: "adhan-" + prayerName,
     requireInteraction: true,
     silent: false,
     vibrate: [200, 100, 200, 100, 200, 100, 400],
@@ -188,12 +239,37 @@ function showAdhanNotification(settings: AdhanSettings): void {
 
   if ("serviceWorker" in navigator && navigator.serviceWorker.controller) {
     navigator.serviceWorker.ready.then((registration) => {
-      registration.showNotification(title, options);
+      registration.showNotification(msg.title, options);
     }).catch(() => {
-      try { new Notification(title, options); } catch {}
+      try { new Notification(msg.title, options); } catch {}
     });
   } else {
-    try { new Notification(title, options); } catch {}
+    try { new Notification(msg.title, options); } catch {}
+  }
+}
+
+function showPreReminderNotification(prayerName: string): void {
+  if (!isNotificationSupported() || Notification.permission !== "granted") return;
+  const msg = PRE_REMINDER_MESSAGES[prayerName] || { title: `⏰ ${prayerName} in 10 minutes`, body: `Prepare for ${prayerName} prayer. 🤲` };
+
+  const options: any = {
+    body: msg.body,
+    icon: "/pwa-192x192.png",
+    badge: "/pwa-192x192.png",
+    tag: "pre-reminder-" + prayerName,
+    requireInteraction: false,
+    silent: false, // Uses device default notification sound
+    vibrate: [100, 50, 100],
+  };
+
+  if ("serviceWorker" in navigator && navigator.serviceWorker.controller) {
+    navigator.serviceWorker.ready.then((registration) => {
+      registration.showNotification(msg.title, options);
+    }).catch(() => {
+      try { new Notification(msg.title, options); } catch {}
+    });
+  } else {
+    try { new Notification(msg.title, options); } catch {}
   }
 }
 
@@ -207,6 +283,8 @@ function syncSettingsToSW(settings: AdhanSettings) {
         ...settings,
         adhanOptions: ADHAN_OPTIONS,
         prayerSchedule: PRAYER_SCHEDULE,
+        preReminderMessages: PRE_REMINDER_MESSAGES,
+        prayerTimeMessages: PRAYER_TIME_MESSAGES,
       },
     });
   }
@@ -250,28 +328,37 @@ export function scheduleAdhan(settings: AdhanSettings): void {
   if (!settings.enabled) return;
 
   const now = new Date();
-  const currentMinutes = now.getHours() * 60 + now.getMinutes();
+  const currentMs = now.getHours() * 3600000 + now.getMinutes() * 60000 + now.getSeconds() * 1000;
 
   for (const [prayerName, timeStr] of Object.entries(PRAYER_SCHEDULE)) {
     if (!settings.prayers[prayerName as keyof AdhanSettings["prayers"]]) continue;
 
     const [h, m] = timeStr.split(":").map(Number);
-    const prayerMinutes = h * 60 + m;
-    let diffMs = (prayerMinutes - currentMinutes) * 60 * 1000;
-    diffMs -= now.getSeconds() * 1000;
+    const prayerMs = h * 3600000 + m * 60000;
 
-    if (diffMs <= 0) {
-      diffMs += 24 * 60 * 60 * 1000;
-    }
+    // Schedule at prayer time
+    let diffMs = prayerMs - currentMs;
+    if (diffMs <= 0) diffMs += 86400000;
 
     const timerId = window.setTimeout(() => {
       playAdhan(settings);
-      // Reschedule
       const nextTimer = window.setTimeout(() => scheduleAdhan(settings), 2000);
       scheduledTimers.push(nextTimer);
     }, diffMs);
-
     scheduledTimers.push(timerId);
+
+    // Schedule 10-minute-before reminder
+    if (settings.preReminder) {
+      let preMs = prayerMs - 600000 - currentMs; // 10 min before
+      if (preMs <= 0) preMs += 86400000;
+
+      const preTimerId = window.setTimeout(() => {
+        showPreReminderNotification(prayerName);
+      }, preMs);
+      scheduledTimers.push(preTimerId);
+      console.log(`Pre-reminder for ${prayerName} in ${Math.round(preMs / 60000)} min`);
+    }
+
     console.log(`Adhan scheduled for ${prayerName} in ${Math.round(diffMs / 60000)} minutes`);
   }
 }
@@ -282,9 +369,8 @@ async function registerPeriodicSync() {
     try {
       const registration = await navigator.serviceWorker.ready;
       await (registration as any).periodicSync.register("adhan-check", {
-        minInterval: 60 * 1000, // Check every minute
+        minInterval: 60 * 1000,
       });
-      console.log("Periodic sync registered for adhan");
     } catch (err) {
       console.log("Periodic sync not available:", err);
     }
@@ -302,10 +388,8 @@ export function initAdhanService(): void {
     registerPeriodicSync();
   }
 
-  // Listen for messages from SW
   listenForSWMessages();
 
-  // Reschedule on visibility change
   document.addEventListener("visibilitychange", () => {
     if (document.visibilityState === "visible") {
       const s = getAdhanSettings();
