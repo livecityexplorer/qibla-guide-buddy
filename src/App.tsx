@@ -25,6 +25,7 @@ import BoycottScanPage from "./pages/boycott/BoycottScanPage";
 import BoycottDirectoryPage from "./pages/boycott/BoycottDirectoryPage";
 import BoycottSearchPage from "./pages/boycott/BoycottSearchPage";
 import NearbyPage from "./pages/NearbyPage";
+import ProfilePage from "./pages/ProfilePage";
 import NotFound from "./pages/NotFound";
 import { QuranPlayerProvider } from "./contexts/QuranPlayerContext";
 import QuranMiniPlayer from "./components/QuranMiniPlayer";
