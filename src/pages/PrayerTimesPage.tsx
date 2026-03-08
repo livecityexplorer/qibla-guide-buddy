@@ -72,7 +72,11 @@ const PrayerTimesPage = () => {
             <div>
               <p className="text-sm font-medium text-foreground">Enable Adhan</p>
               <p className="text-xs text-muted-foreground">
-                {notificationGranted ? "Notifications allowed" : "Will request permission"}
+                {settings.enabled
+                  ? notificationGranted
+                    ? "✅ Active with notifications"
+                    : "🔊 Audio only (notifications unavailable)"
+                  : "Tap to enable Adhan alerts"}
               </p>
             </div>
             <Switch
