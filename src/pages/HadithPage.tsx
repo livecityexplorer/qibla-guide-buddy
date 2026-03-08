@@ -1,49 +1,39 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
-import { ArrowLeft, RefreshCw } from "lucide-react";
+import { ArrowLeft, RefreshCw, Loader2, BookOpen } from "lucide-react";
 import { useNavigate } from "react-router-dom";
-
-const HADITHS = [
-  {
-    narrator: "Abu Hurairah (RA)",
-    text: "The Messenger of Allah (ﷺ) said: 'The best of you are those who learn the Quran and teach it.'",
-    source: "Sahih al-Bukhari 5027",
-    topic: "Knowledge",
-  },
-  {
-    narrator: "Anas ibn Malik (RA)",
-    text: "The Prophet (ﷺ) said: 'None of you truly believes until he loves for his brother what he loves for himself.'",
-    source: "Sahih al-Bukhari 13",
-    topic: "Faith",
-  },
-  {
-    narrator: "Abu Hurairah (RA)",
-    text: "The Prophet (ﷺ) said: 'Whoever believes in Allah and the Last Day, let him speak good or remain silent.'",
-    source: "Sahih al-Bukhari 6018",
-    topic: "Manners",
-  },
-  {
-    narrator: "Abdullah ibn Umar (RA)",
-    text: "The Prophet (ﷺ) said: 'The most beloved deed to Allah is the prayer performed on time.'",
-    source: "Sahih al-Bukhari 527",
-    topic: "Prayer",
-  },
-  {
-    narrator: "Abu Dharr (RA)",
-    text: "The Prophet (ﷺ) said: 'Your smile in the face of your brother is charity.'",
-    source: "Jami at-Tirmidhi 1956",
-    topic: "Charity",
-  },
-];
+import { useTranslation } from "react-i18next";
+import { getRandomHadith, getAllLocalHadiths, HADITH_COLLECTIONS, type HadithData } from "@/services/hadithService";
 
 const HadithPage = () => {
   const navigate = useNavigate();
-  const [currentIndex, setCurrentIndex] = useState(0);
+  const { t } = useTranslation();
+  const [selectedCollection, setSelectedCollection] = useState("bukhari");
+  const [currentHadith, setCurrentHadith] = useState<HadithData | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(false);
+  const localHadiths = getAllLocalHadiths();
 
-  const hadith = HADITHS[currentIndex];
+  const fetchHadith = async (collection?: string) => {
+    setLoading(true);
+    setError(false);
+    try {
+      const hadith = await getRandomHadith(collection || selectedCollection);
+      setCurrentHadith(hadith);
+    } catch {
+      setError(true);
+    } finally {
+      setLoading(false);
+    }
+  };
 
-  const nextHadith = () => {
-    setCurrentIndex((prev) => (prev + 1) % HADITHS.length);
+  useEffect(() => {
+    fetchHadith();
+  }, []);
+
+  const handleCollectionChange = (col: string) => {
+    setSelectedCollection(col);
+    fetchHadith(col);
   };
 
   return (
@@ -51,48 +41,90 @@ const HadithPage = () => {
       <div className="gradient-emerald px-4 pb-8 pt-12 islamic-pattern">
         <button onClick={() => navigate("/")} className="mb-4 flex items-center gap-2 text-primary-foreground/80">
           <ArrowLeft size={20} />
-          <span className="text-sm">Back</span>
+          <span className="text-sm">{t("common.back")}</span>
         </button>
-        <h1 className="text-2xl font-bold text-primary-foreground">Hadith</h1>
-        <p className="mt-1 text-sm text-primary-foreground/70">Words of the Prophet ﷺ</p>
+        <h1 className="text-2xl font-bold text-primary-foreground">{t("hadith.title")}</h1>
+        <p className="mt-1 text-sm text-primary-foreground/70">{t("hadith.subtitle")}</p>
       </div>
 
       <div className="px-4 -mt-4 pb-6">
-        <motion.div
-          key={currentIndex}
-          initial={{ opacity: 0, scale: 0.95 }}
-          animate={{ opacity: 1, scale: 1 }}
-          className="rounded-2xl bg-card p-6 shadow-sm"
-        >
-          <div className="mb-4 inline-block rounded-full bg-secondary px-3 py-1">
-            <span className="text-xs font-semibold text-secondary-foreground">{hadith.topic}</span>
-          </div>
+        {/* Collection Selector */}
+        <div className="mb-4 flex gap-2 overflow-x-auto pb-1">
+          {HADITH_COLLECTIONS.map((col) => (
+            <button
+              key={col.id}
+              onClick={() => handleCollectionChange(col.id)}
+              className={`shrink-0 rounded-full px-4 py-2 text-xs font-medium transition-all ${
+                selectedCollection === col.id
+                  ? "gradient-emerald text-primary-foreground shadow-emerald"
+                  : "bg-card text-muted-foreground"
+              }`}
+            >
+              {t(`hadith.${col.id}`)}
+            </button>
+          ))}
+        </div>
 
-          <p className="text-lg leading-relaxed text-foreground">"{hadith.text}"</p>
-
-          <div className="mt-6 border-t border-border pt-4">
-            <p className="text-sm font-medium text-primary">{hadith.narrator}</p>
-            <p className="text-xs text-muted-foreground">{hadith.source}</p>
+        {/* Current Hadith */}
+        {loading ? (
+          <div className="flex items-center justify-center py-12">
+            <Loader2 className="animate-spin text-primary" size={32} />
+            <span className="ml-3 text-sm text-muted-foreground">{t("hadith.loadingHadith")}</span>
           </div>
-        </motion.div>
+        ) : error ? (
+          <div className="rounded-2xl bg-card p-6 text-center shadow-sm">
+            <p className="text-sm text-muted-foreground">{t("hadith.errorLoading")}</p>
+            <button onClick={() => fetchHadith()} className="mt-3 rounded-lg gradient-emerald px-4 py-2 text-sm font-medium text-primary-foreground">
+              {t("hadith.retry")}
+            </button>
+          </div>
+        ) : currentHadith ? (
+          <motion.div
+            key={currentHadith.text?.substring(0, 30)}
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="rounded-2xl bg-card p-6 shadow-sm"
+          >
+            {currentHadith.chapter && (
+              <div className="mb-3 inline-block rounded-full bg-secondary px-3 py-1">
+                <span className="text-xs font-semibold text-secondary-foreground">{currentHadith.chapter}</span>
+              </div>
+            )}
+            
+            <p className="text-lg leading-relaxed text-foreground">"{currentHadith.text}"</p>
+
+            <div className="mt-6 border-t border-border pt-4 space-y-1">
+              {currentHadith.narrator && (
+                <p className="text-sm font-medium text-primary">{currentHadith.narrator}</p>
+              )}
+              <p className="text-xs text-muted-foreground">{currentHadith.source}</p>
+              {currentHadith.grade && (
+                <p className="text-xs text-accent">{t("hadith.grade")}: {currentHadith.grade}</p>
+              )}
+            </div>
+          </motion.div>
+        ) : null}
 
         <button
-          onClick={nextHadith}
+          onClick={() => fetchHadith()}
           className="mt-6 flex w-full items-center justify-center gap-2 rounded-xl gradient-emerald py-3 font-medium text-primary-foreground shadow-emerald transition-all active:scale-95"
         >
           <RefreshCw size={18} />
-          Next Hadith
+          {t("hadith.nextHadith")}
         </button>
 
-        {/* All Hadiths List */}
-        <h3 className="mt-8 mb-3 text-sm font-semibold uppercase tracking-wider text-muted-foreground">Browse Hadiths</h3>
+        {/* Browse Local Hadiths */}
+        <h3 className="mt-8 mb-3 text-sm font-semibold uppercase tracking-wider text-muted-foreground">
+          <BookOpen size={14} className="inline mr-1" />
+          {t("hadith.browseHadiths")}
+        </h3>
         <div className="space-y-2">
-          {HADITHS.map((h, i) => (
+          {localHadiths.map((h, i) => (
             <button
               key={i}
-              onClick={() => setCurrentIndex(i)}
+              onClick={() => { setCurrentHadith(h); window.scrollTo({ top: 0, behavior: "smooth" }); }}
               className={`w-full rounded-xl p-4 text-left transition-all ${
-                i === currentIndex ? "bg-secondary ring-2 ring-primary" : "bg-card"
+                currentHadith?.text === h.text ? "bg-secondary ring-2 ring-primary" : "bg-card"
               } shadow-sm`}
             >
               <p className="text-sm font-medium text-foreground line-clamp-2">"{h.text}"</p>
