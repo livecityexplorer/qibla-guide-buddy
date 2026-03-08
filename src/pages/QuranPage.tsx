@@ -361,7 +361,7 @@ const QuranPage = () => {
                           )}
                         </button>
                       </div>
-                      <p className="text-right leading-[2.2] font-arabic text-foreground" style={{ fontSize: `${arabicSize}px` }}>{ayah.text}</p>
+                      <p className="text-right leading-[2.2] font-arabic text-foreground" translate="no" style={{ fontSize: `${arabicSize}px` }}>{ayah.text}</p>
                       {translation && (
                         <p className="mt-3 leading-relaxed text-muted-foreground border-t border-border pt-3" style={{ fontSize: `${translationSize}px` }}>
                           {translation.text}
