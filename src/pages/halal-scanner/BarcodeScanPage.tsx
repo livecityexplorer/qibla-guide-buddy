@@ -1,6 +1,6 @@
-import { useState, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { ArrowLeft, Camera, ScanLine, Keyboard, Clipboard, Loader2, CheckCircle, XCircle, AlertTriangle, HelpCircle } from "lucide-react";
+import { ArrowLeft, Camera, ScanLine, Keyboard, Clipboard, Loader2, CheckCircle, XCircle, AlertTriangle, HelpCircle, FlashlightOff, Flashlight } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { searchByBarcode, addToHistory, getSettings } from "@/services/halalScannerService";
 import type { ProductResult } from "@/services/halalScannerService";
@@ -31,23 +31,18 @@ const BarcodeScanPage = () => {
   const [factIndex] = useState(Math.floor(Math.random() * HALAL_FACTS.length));
   const inputRef = useRef<HTMLInputElement>(null);
 
-  const handleScan = async (code: string) => {
+  const handleScan = useCallback(async (code: string) => {
     if (!code.trim()) return;
     setScanning(true);
     setError("");
     setResult(null);
-
     try {
       const product = await searchByBarcode(code.trim());
       if (product) {
         setResult(product);
         const settings = getSettings();
-        if (settings.autoSave) {
-          addToHistory({ product, scannedAt: new Date().toISOString() });
-        }
-        if (settings.vibration && navigator.vibrate) {
-          navigator.vibrate(100);
-        }
+        if (settings.autoSave) addToHistory({ product, scannedAt: new Date().toISOString() });
+        if (settings.vibration && navigator.vibrate) navigator.vibrate(100);
       } else {
         setError("Product not found. Try searching by name instead.");
       }
@@ -56,15 +51,10 @@ const BarcodeScanPage = () => {
     } finally {
       setScanning(false);
     }
-  };
+  }, []);
 
   const handlePaste = async () => {
-    try {
-      const text = await navigator.clipboard.readText();
-      setBarcode(text.trim());
-    } catch {
-      // clipboard access denied
-    }
+    try { const text = await navigator.clipboard.readText(); setBarcode(text.trim()); } catch {}
   };
 
   const StatusIcon = result ? statusConfig[result.status].icon : null;
@@ -82,127 +72,63 @@ const BarcodeScanPage = () => {
       <div className="px-4 -mt-4 pb-6 space-y-4">
         {/* Mode Toggle */}
         <div className="flex rounded-xl bg-card border border-border overflow-hidden">
-          <button
-            onClick={() => setMode("camera")}
-            className={`flex-1 py-3 text-sm font-medium transition-colors ${mode === "camera" ? "gradient-emerald text-primary-foreground" : "text-muted-foreground"}`}
-          >
+          <button onClick={() => setMode("camera")}
+            className={`flex-1 py-3 text-sm font-medium transition-colors ${mode === "camera" ? "gradient-emerald text-primary-foreground" : "text-muted-foreground"}`}>
             <Camera size={16} className="inline mr-1" /> Camera
           </button>
-          <button
-            onClick={() => { setMode("manual"); setTimeout(() => inputRef.current?.focus(), 100); }}
-            className={`flex-1 py-3 text-sm font-medium transition-colors ${mode === "manual" ? "gradient-emerald text-primary-foreground" : "text-muted-foreground"}`}
-          >
+          <button onClick={() => { setMode("manual"); setTimeout(() => inputRef.current?.focus(), 100); }}
+            className={`flex-1 py-3 text-sm font-medium transition-colors ${mode === "manual" ? "gradient-emerald text-primary-foreground" : "text-muted-foreground"}`}>
             <Keyboard size={16} className="inline mr-1" /> Manual
           </button>
         </div>
 
-        {/* Scanner Area */}
-        <div className="rounded-2xl bg-card p-6 shadow-sm border border-border text-center">
-          {mode === "camera" ? (
-            <>
-              <div className="mx-auto flex h-48 w-48 items-center justify-center rounded-2xl border-2 border-dashed border-border bg-muted relative overflow-hidden">
-                {scanning ? (
-                  <motion.div
-                    animate={{ y: ["-100%", "100%"] }}
-                    transition={{ repeat: Infinity, duration: 1.5, ease: "linear" }}
-                    className="absolute inset-x-0 h-0.5 gradient-emerald"
-                  />
-                ) : null}
-                <div className="text-center">
-                  <Camera size={48} className="mx-auto text-muted-foreground/50" />
-                  <p className="mt-2 text-xs text-muted-foreground">
-                    Camera scanning requires<br />html5-qrcode library
-                  </p>
-                </div>
-              </div>
-              <p className="mt-3 text-sm text-muted-foreground">
-                Use manual entry below, or search by product name
-              </p>
-              <button
-                onClick={() => { setMode("manual"); setTimeout(() => inputRef.current?.focus(), 100); }}
-                className="mt-3 text-sm font-medium text-primary"
-              >
-                Switch to Manual Entry →
+        {/* Camera / Manual */}
+        {mode === "camera" && !result ? (
+          <CameraScanner
+            onDetected={(code) => { setBarcode(code); handleScan(code); }}
+            onManualEntry={() => { setMode("manual"); setTimeout(() => inputRef.current?.focus(), 100); }}
+          />
+        ) : mode === "manual" && !result ? (
+          <div className="rounded-2xl bg-card p-6 shadow-sm border border-border">
+            <div className="flex gap-2">
+              <input ref={inputRef} type="text" inputMode="numeric" placeholder="Enter barcode number..."
+                value={barcode} onChange={(e) => setBarcode(e.target.value)}
+                onKeyDown={(e) => e.key === "Enter" && handleScan(barcode)}
+                className="flex-1 rounded-xl border border-input bg-background px-4 py-3 text-sm focus:ring-2 focus:ring-primary focus:outline-none" />
+              <button onClick={handlePaste} className="rounded-xl border border-border p-3 text-muted-foreground hover:text-foreground" title="Paste">
+                <Clipboard size={18} />
               </button>
-            </>
-          ) : (
-            <>
-              <div className="flex gap-2">
-                <input
-                  ref={inputRef}
-                  type="text"
-                  inputMode="numeric"
-                  placeholder="Enter barcode number..."
-                  value={barcode}
-                  onChange={(e) => setBarcode(e.target.value)}
-                  onKeyDown={(e) => e.key === "Enter" && handleScan(barcode)}
-                  className="flex-1 rounded-xl border border-input bg-background px-4 py-3 text-sm focus:ring-2 focus:ring-primary focus:outline-none"
-                />
-                <button
-                  onClick={handlePaste}
-                  className="rounded-xl border border-border p-3 text-muted-foreground hover:text-foreground"
-                  title="Paste from clipboard"
-                >
-                  <Clipboard size={18} />
-                </button>
-              </div>
-              <button
-                onClick={() => handleScan(barcode)}
-                disabled={scanning || !barcode.trim()}
-                className="mt-3 w-full rounded-xl gradient-emerald py-3 font-medium text-primary-foreground shadow-emerald transition-all active:scale-95 disabled:opacity-50"
-              >
-                {scanning ? (
-                  <span className="flex items-center justify-center gap-2">
-                    <Loader2 size={18} className="animate-spin" /> Looking up...
-                  </span>
-                ) : (
-                  "Look Up Product"
-                )}
-              </button>
-            </>
-          )}
-        </div>
+            </div>
+            <button onClick={() => handleScan(barcode)} disabled={scanning || !barcode.trim()}
+              className="mt-3 w-full rounded-xl gradient-emerald py-3 font-medium text-primary-foreground shadow-emerald transition-all active:scale-95 disabled:opacity-50">
+              {scanning ? <span className="flex items-center justify-center gap-2"><Loader2 size={18} className="animate-spin" /> Looking up...</span> : "Look Up Product"}
+            </button>
+          </div>
+        ) : null}
 
-        {/* Scanning Fact */}
         {scanning && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            className="rounded-xl bg-card p-4 border border-border"
-          >
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="rounded-xl bg-card p-4 border border-border">
             <p className="text-xs text-muted-foreground">💡 {HALAL_FACTS[factIndex]}</p>
           </motion.div>
         )}
 
-        {/* Error */}
         {error && (
           <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="rounded-xl bg-destructive/10 border border-destructive/30 p-4">
             <p className="text-sm text-destructive">{error}</p>
-            <button onClick={() => navigate("/halal-scanner/search")} className="mt-2 text-xs font-medium text-primary">
-              Search by name instead →
-            </button>
+            <button onClick={() => navigate("/halal-scanner/search")} className="mt-2 text-xs font-medium text-primary">Search by name instead →</button>
           </motion.div>
         )}
 
-        {/* Quick Result */}
         <AnimatePresence>
           {result && (
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0 }}
-              className={`rounded-2xl border ${statusConfig[result.status].border} ${statusConfig[result.status].bg} p-5`}
-            >
+            <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}
+              className={`rounded-2xl border ${statusConfig[result.status].border} ${statusConfig[result.status].bg} p-5`}>
               <div className="flex items-start gap-3">
-                {result.image && (
-                  <img src={result.image} alt={result.name} className="h-16 w-16 rounded-lg object-contain bg-background" />
-                )}
+                {result.image && <img src={result.image} alt={result.name} className="h-16 w-16 rounded-lg object-contain bg-background" />}
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2">
                     {StatusIcon && <StatusIcon size={24} className={statusConfig[result.status].text} />}
-                    <span className={`text-lg font-bold ${statusConfig[result.status].text}`}>
-                      {statusConfig[result.status].label}
-                    </span>
+                    <span className={`text-lg font-bold ${statusConfig[result.status].text}`}>{statusConfig[result.status].label}</span>
                   </div>
                   <p className="font-medium text-foreground mt-1 truncate">{result.name}</p>
                   <p className="text-xs text-muted-foreground">{result.brand}</p>
@@ -210,46 +136,125 @@ const BarcodeScanPage = () => {
               </div>
               <p className="mt-3 text-sm text-muted-foreground leading-relaxed">{result.summary}</p>
               <div className="mt-4 flex gap-2">
-                <button
-                  onClick={() => navigate(`/halal-scanner/product/${result.barcode}`)}
-                  className="flex-1 rounded-xl gradient-emerald py-2.5 text-sm font-medium text-primary-foreground"
-                >
-                  View Full Analysis
-                </button>
-                <button
-                  onClick={() => { setResult(null); setBarcode(""); setError(""); }}
-                  className="rounded-xl border border-border px-4 py-2.5 text-sm font-medium text-foreground"
-                >
-                  Scan Another
-                </button>
+                <button onClick={() => navigate(`/halal-scanner/product/${result.barcode}`)}
+                  className="flex-1 rounded-xl gradient-emerald py-2.5 text-sm font-medium text-primary-foreground">View Full Analysis</button>
+                <button onClick={() => { setResult(null); setBarcode(""); setError(""); }}
+                  className="rounded-xl border border-border px-4 py-2.5 text-sm font-medium text-foreground">Scan Another</button>
               </div>
             </motion.div>
           )}
         </AnimatePresence>
 
-        {/* Sample Barcodes */}
-        <div className="rounded-xl bg-card p-4 shadow-sm border border-border">
-          <h3 className="text-sm font-semibold text-foreground mb-2">Try These Sample Barcodes</h3>
-          <div className="space-y-2">
-            {[
-              { code: "7622210449283", label: "Oreo Cookies" },
-              { code: "5000159484695", label: "Cadbury Dairy Milk" },
-              { code: "8801234567890", label: "Nongshim Noodles" },
-            ].map((sample) => (
-              <button
-                key={sample.code}
-                onClick={() => { setBarcode(sample.code); setMode("manual"); handleScan(sample.code); }}
-                className="w-full flex items-center justify-between rounded-lg bg-muted p-3 text-left active:scale-[0.98] transition-transform"
-              >
-                <div>
-                  <p className="text-sm font-medium text-foreground">{sample.label}</p>
-                  <p className="text-xs text-muted-foreground font-mono">{sample.code}</p>
-                </div>
-                <ScanLine size={16} className="text-primary" />
-              </button>
-            ))}
+        {!result && mode === "manual" && (
+          <div className="rounded-xl bg-card p-4 shadow-sm border border-border">
+            <h3 className="text-sm font-semibold text-foreground mb-2">Try These Sample Barcodes</h3>
+            <div className="space-y-2">
+              {[
+                { code: "7622210449283", label: "Oreo Cookies" },
+                { code: "5000159484695", label: "Cadbury Dairy Milk" },
+                { code: "3017620422003", label: "Nutella" },
+              ].map((sample) => (
+                <button key={sample.code} onClick={() => { setBarcode(sample.code); handleScan(sample.code); }}
+                  className="w-full flex items-center justify-between rounded-lg bg-muted p-3 text-left active:scale-[0.98] transition-transform">
+                  <div>
+                    <p className="text-sm font-medium text-foreground">{sample.label}</p>
+                    <p className="text-xs text-muted-foreground font-mono">{sample.code}</p>
+                  </div>
+                  <ScanLine size={16} className="text-primary" />
+                </button>
+              ))}
+            </div>
           </div>
+        )}
+      </div>
+    </div>
+  );
+};
+
+/* ── Camera Scanner Component ── */
+const CameraScanner = ({ onDetected, onManualEntry }: { onDetected: (code: string) => void; onManualEntry: () => void }) => {
+  const scannerRef = useRef<HTMLDivElement>(null);
+  const html5QrCodeRef = useRef<any>(null);
+  const [cameraError, setCameraError] = useState("");
+  const [isActive, setIsActive] = useState(false);
+  const [torch, setTorch] = useState(false);
+  const detectedRef = useRef(false);
+
+  useEffect(() => {
+    let mounted = true;
+    const start = async () => {
+      try {
+        const { Html5Qrcode } = await import("html5-qrcode");
+        if (!mounted) return;
+        const scanner = new Html5Qrcode("barcode-reader", { verbose: false });
+        html5QrCodeRef.current = scanner;
+        await scanner.start(
+          { facingMode: "environment" },
+          { fps: 10, qrbox: { width: 280, height: 150 }, aspectRatio: 1.0 },
+          (text: string) => {
+            if (!detectedRef.current) {
+              detectedRef.current = true;
+              scanner.stop().catch(() => {});
+              onDetected(text);
+            }
+          },
+          () => {}
+        );
+        if (mounted) setIsActive(true);
+      } catch (err: any) {
+        if (mounted) setCameraError(
+          err?.name === "NotAllowedError" ? "Camera access denied. Please allow camera permission." :
+          err?.name === "NotFoundError" ? "No camera found." : "Could not start camera."
+        );
+      }
+    };
+    start();
+    return () => { mounted = false; html5QrCodeRef.current?.stop().catch(() => {}); html5QrCodeRef.current?.clear().catch(() => {}); };
+  }, [onDetected]);
+
+  const toggleTorch = async () => {
+    try {
+      const track = html5QrCodeRef.current?.getRunningTrackCameraCapabilities?.();
+      if (track?.torchFeature?.isSupported()) { await track.torchFeature.apply(!torch); setTorch(!torch); }
+    } catch {}
+  };
+
+  if (cameraError) {
+    return (
+      <div className="rounded-2xl bg-card p-6 shadow-sm border border-border text-center">
+        <Camera size={48} className="mx-auto text-muted-foreground/30" />
+        <p className="mt-3 text-sm font-medium text-foreground">Camera Unavailable</p>
+        <p className="text-xs text-muted-foreground mt-1">{cameraError}</p>
+        <button onClick={onManualEntry}
+          className="mt-4 w-full rounded-xl gradient-emerald py-3 text-sm font-medium text-primary-foreground shadow-emerald">
+          Enter Barcode Manually
+        </button>
+      </div>
+    );
+  }
+
+  return (
+    <div className="rounded-2xl bg-card shadow-sm border border-border overflow-hidden">
+      <div className="relative bg-foreground/95">
+        <div id="barcode-reader" ref={scannerRef} className="w-full" style={{ minHeight: 300 }} />
+        {isActive && (
+          <div className="absolute inset-0 pointer-events-none flex items-center justify-center">
+            <motion.div animate={{ y: [-60, 60] }} transition={{ repeat: Infinity, repeatType: "reverse", duration: 1.5, ease: "easeInOut" }}
+              className="w-64 h-0.5 rounded-full bg-emerald-mid shadow-[0_0_10px_2px_hsl(var(--emerald-mid)/0.5)]" />
+          </div>
+        )}
+        <div className="absolute top-3 right-3 flex gap-2">
+          <button onClick={toggleTorch} className="p-2 rounded-full bg-foreground/40 backdrop-blur-sm text-primary-foreground">
+            {torch ? <Flashlight size={18} /> : <FlashlightOff size={18} />}
+          </button>
         </div>
+      </div>
+      <div className="p-4 text-center">
+        <p className="text-sm font-medium text-foreground">{isActive ? "Point camera at a barcode" : "Starting camera..."}</p>
+        <p className="text-xs text-muted-foreground mt-1">{isActive ? "Hold steady — auto-detection is active" : "Please allow camera access"}</p>
+        <button onClick={onManualEntry} className="mt-3 text-xs font-medium text-primary flex items-center justify-center gap-1 mx-auto">
+          <Keyboard size={12} /> Enter barcode manually
+        </button>
       </div>
     </div>
   );
