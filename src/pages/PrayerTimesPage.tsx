@@ -19,12 +19,17 @@ const PRAYER_TIMES = [
 ];
 
 // Map nameKey to AdhanSettings prayer key
+const PRAYER_KEY_MAP: Record<string, keyof AdhanSettings["prayers"]> = {
+  "prayer.fajr": "Fajr",
+  "prayer.sunrise": "Sunrise",
+  "prayer.dhuhr": "Dhuhr",
+  "prayer.asr": "Asr",
+  "prayer.maghrib": "Maghrib",
+  "prayer.isha": "Isha",
+};
+
 const prayerSettingsKey = (nameKey: string): keyof AdhanSettings["prayers"] | null => {
-  const map: Record<string, keyof AdhanSettings["prayers">> = {
-    "prayer.fajr": "Fajr", "prayer.sunrise": "Sunrise", "prayer.dhuhr": "Dhuhr",
-    "prayer.asr": "Asr", "prayer.maghrib": "Maghrib", "prayer.isha": "Isha",
-  };
-  return map[nameKey] || null;
+  return PRAYER_KEY_MAP[nameKey] || null;
 };
 
 const PrayerTimesPage = () => {
