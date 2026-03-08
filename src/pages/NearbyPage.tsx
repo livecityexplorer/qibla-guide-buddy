@@ -162,13 +162,13 @@ async function searchNearby(lat: number, lon: number, type: PlaceType | "all", r
 // Also search Nominatim for additional results
 async function searchNominatim(lat: number, lon: number, type: PlaceType, radius = 5000): Promise<NearbyPlace[]> {
   const queries: Record<PlaceType, string[]> = {
-    mosque: ["mosque", "masjid", "islamic center"],
+    mosque: ["mosque", "masjid", "islamic center", "mezquita", "mosquée", "مسجد", "cami"],
     restaurant: ["halal restaurant", "halal food"],
     shop: ["halal shop", "halal grocery"],
     butcher: ["halal butcher", "halal meat"],
   };
 
-  const degreeSpread = Math.max(0.1, radius / 111000 * 1.5);
+  const degreeSpread = Math.max(0.15, radius / 111000 * 2);
   const allResults: NearbyPlace[] = [];
 
   try {
