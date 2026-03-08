@@ -1,4 +1,4 @@
-import { ingredientDatabase, findIngredient, analyzeIngredientList, getOverallStatus, type HalalStatus } from "@/data/ingredientDatabase";
+import { ingredientDatabase, findIngredient, analyzeIngredientList, getOverallStatus, type HalalStatus, HARAM_PORK_KEYWORDS } from "@/data/ingredientDatabase";
 
 export interface ProductResult {
   id: string;
