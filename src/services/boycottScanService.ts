@@ -72,9 +72,7 @@ function extractProduct(data: any, source: ProductInfo["source"]): ProductInfo |
 export async function lookupBarcode(barcode: string): Promise<ProductInfo | null> {
   for (const { base, source } of API_SOURCES) {
     try {
-      const res = await fetch(`${base}/${barcode}.json`, {
-        headers: { "User-Agent": "MuslimCompanionApp/1.0" },
-      });
+      const res = await fetch(`${base}/${barcode}.json`);
       if (!res.ok) continue;
       const data = await res.json();
       if (data.status === 1) {
