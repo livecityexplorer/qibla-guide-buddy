@@ -45,19 +45,9 @@ function generateSummary(analysis: { ingredient: string; status: HalalStatus }[]
 
 // Check product name and categories for pork indicators
 function detectPorkFromMetadata(name: string, categories: string[]): string[] {
-  const porkKeywords = [
-    "pork", "pig", "swine", "ham", "bacon", "prosciutto", "pancetta", "salami",
-    "pepperoni", "chorizo", "porcine", "lard", "lardon", "serrano", "iberico",
-    "ibérico", "cerdo", "puerco", "jamón", "jambon", "porc", "cochon",
-    "schwein", "schinken", "speck", "wurst", "maiale", "suino", "porco",
-    "presunto", "varken", "domuz", "babi", "خنزير", "豚", "ポーク", "돼지",
-    "свинина", "wieprzowina", "szynka", "boczek", "morcilla", "boudin",
-    "bratwurst", "mortadella", "coppa", "capicola", "guanciale", "nduja",
-    "cotechino", "zampone", "sopressata",
-  ];
   const detected: string[] = [];
   const combined = `${name} ${categories.join(" ")}`.toLowerCase();
-  for (const kw of porkKeywords) {
+  for (const kw of HARAM_PORK_KEYWORDS) {
     if (combined.includes(kw.toLowerCase())) {
       detected.push(kw);
     }
