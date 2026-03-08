@@ -6,7 +6,7 @@ interface PlayerState {
   currentAyah: Ayah | null;
   currentSurahName: string;
   reciter: string;
-  playlist: Ayah[];       // list of ayahs to play through
+  playlist: Ayah[];
   playlistIndex: number;
   duration: number;
   currentTime: number;
@@ -34,6 +34,7 @@ export function useQuranPlayer() {
 
 export function QuranPlayerProvider({ children }: { children: React.ReactNode }) {
   const audioRef = useRef<HTMLAudioElement | null>(null);
+  const wakeLockRef = useRef<any>(null);
   const [state, setState] = useState<PlayerState>({
     isPlaying: false,
     currentAyah: null,
@@ -44,6 +45,74 @@ export function QuranPlayerProvider({ children }: { children: React.ReactNode })
     duration: 0,
     currentTime: 0,
   });
+
+  // Wake Lock helpers - keeps audio playing with screen off
+  const requestWakeLock = useCallback(async () => {
+    try {
+      if ("wakeLock" in navigator && !wakeLockRef.current) {
+        wakeLockRef.current = await (navigator as any).wakeLock.request("screen");
+        wakeLockRef.current.addEventListener("release", () => {
+          wakeLockRef.current = null;
+        });
+      }
+    } catch {}
+  }, []);
+
+  const releaseWakeLock = useCallback(() => {
+    if (wakeLockRef.current) {
+      wakeLockRef.current.release().catch(() => {});
+      wakeLockRef.current = null;
+    }
+  }, []);
+
+  // Re-acquire wake lock when page becomes visible again (it's auto-released on visibility change)
+  useEffect(() => {
+    const onVisibilityChange = () => {
+      if (document.visibilityState === "visible" && state.isPlaying) {
+        requestWakeLock();
+      }
+    };
+    document.addEventListener("visibilitychange", onVisibilityChange);
+    return () => document.removeEventListener("visibilitychange", onVisibilityChange);
+  }, [state.isPlaying, requestWakeLock]);
+
+  // Update MediaSession metadata with artwork
+  const updateMediaSession = useCallback((ayah: Ayah, surahName: string) => {
+    if ("mediaSession" in navigator) {
+      navigator.mediaSession.metadata = new MediaMetadata({
+        title: `Ayah ${ayah.numberInSurah}`,
+        artist: "Holy Quran",
+        album: surahName,
+        artwork: [
+          { src: "/pwa-192x192.png", sizes: "192x192", type: "image/png" },
+          { src: "/pwa-512x512.png", sizes: "512x512", type: "image/png" },
+        ],
+      });
+    }
+  }, []);
+
+  // Update MediaSession playback state
+  const updatePlaybackState = useCallback((playing: boolean) => {
+    if ("mediaSession" in navigator) {
+      navigator.mediaSession.playbackState = playing ? "playing" : "paused";
+    }
+  }, []);
+
+  // Update MediaSession position state
+  const updatePositionState = useCallback(() => {
+    if ("mediaSession" in navigator && audioRef.current) {
+      const audio = audioRef.current;
+      if (audio.duration && isFinite(audio.duration)) {
+        try {
+          navigator.mediaSession.setPositionState({
+            duration: audio.duration,
+            playbackRate: audio.playbackRate,
+            position: audio.currentTime,
+          });
+        } catch {}
+      }
+    }
+  }, []);
 
   // Create audio element once
   useEffect(() => {
@@ -56,9 +125,9 @@ export function QuranPlayerProvider({ children }: { children: React.ReactNode })
     });
     audio.addEventListener("loadedmetadata", () => {
       setState((s) => ({ ...s, duration: audio.duration }));
+      updatePositionState();
     });
     audio.addEventListener("ended", () => {
-      // Auto-advance to next ayah
       setState((prev) => {
         const nextIndex = prev.playlistIndex + 1;
         if (nextIndex < prev.playlist.length) {
@@ -66,18 +135,46 @@ export function QuranPlayerProvider({ children }: { children: React.ReactNode })
           const url = getAyahAudioUrl(nextAyah.number, prev.reciter);
           audio.src = url;
           audio.play().catch(() => {});
+          updateMediaSession(nextAyah, prev.currentSurahName);
           return { ...prev, currentAyah: nextAyah, playlistIndex: nextIndex, isPlaying: true };
         }
+        updatePlaybackState(false);
+        releaseWakeLock();
         return { ...prev, isPlaying: false };
       });
     });
-    audio.addEventListener("play", () => setState((s) => ({ ...s, isPlaying: true })));
-    audio.addEventListener("pause", () => setState((s) => ({ ...s, isPlaying: false })));
+    audio.addEventListener("play", () => {
+      setState((s) => ({ ...s, isPlaying: true }));
+      updatePlaybackState(true);
+      requestWakeLock();
+    });
+    audio.addEventListener("pause", () => {
+      setState((s) => ({ ...s, isPlaying: false }));
+      updatePlaybackState(false);
+    });
 
-    // MediaSession API for lock screen / notification controls
+    // MediaSession action handlers for lock screen controls
     if ("mediaSession" in navigator) {
       navigator.mediaSession.setActionHandler("play", () => audio.play());
       navigator.mediaSession.setActionHandler("pause", () => audio.pause());
+      navigator.mediaSession.setActionHandler("stop", () => {
+        audio.pause();
+        audio.src = "";
+        setState((s) => ({ ...s, isPlaying: false, currentAyah: null, playlist: [], playlistIndex: 0 }));
+        releaseWakeLock();
+      });
+      navigator.mediaSession.setActionHandler("seekto", (details) => {
+        if (details.seekTime != null) audio.currentTime = details.seekTime;
+        updatePositionState();
+      });
+      navigator.mediaSession.setActionHandler("seekbackward", (details) => {
+        audio.currentTime = Math.max(0, audio.currentTime - (details.seekOffset || 10));
+        updatePositionState();
+      });
+      navigator.mediaSession.setActionHandler("seekforward", (details) => {
+        audio.currentTime = Math.min(audio.duration, audio.currentTime + (details.seekOffset || 10));
+        updatePositionState();
+      });
       navigator.mediaSession.setActionHandler("previoustrack", () => {
         setState((prev) => {
           if (prev.playlistIndex > 0) {
@@ -85,6 +182,7 @@ export function QuranPlayerProvider({ children }: { children: React.ReactNode })
             const ayah = prev.playlist[i];
             audio.src = getAyahAudioUrl(ayah.number, prev.reciter);
             audio.play().catch(() => {});
+            updateMediaSession(ayah, prev.currentSurahName);
             return { ...prev, currentAyah: ayah, playlistIndex: i };
           }
           return prev;
@@ -97,6 +195,7 @@ export function QuranPlayerProvider({ children }: { children: React.ReactNode })
             const ayah = prev.playlist[i];
             audio.src = getAyahAudioUrl(ayah.number, prev.reciter);
             audio.play().catch(() => {});
+            updateMediaSession(ayah, prev.currentSurahName);
             return { ...prev, currentAyah: ayah, playlistIndex: i };
           }
           return prev;
@@ -107,19 +206,16 @@ export function QuranPlayerProvider({ children }: { children: React.ReactNode })
     return () => {
       audio.pause();
       audio.src = "";
+      releaseWakeLock();
     };
-  }, []);
+  }, [requestWakeLock, releaseWakeLock, updateMediaSession, updatePlaybackState, updatePositionState]);
 
-  // Update MediaSession metadata
+  // Update MediaSession metadata when ayah changes
   useEffect(() => {
-    if ("mediaSession" in navigator && state.currentAyah) {
-      navigator.mediaSession.metadata = new MediaMetadata({
-        title: `Ayah ${state.currentAyah.numberInSurah}`,
-        artist: "Holy Quran",
-        album: state.currentSurahName,
-      });
+    if (state.currentAyah) {
+      updateMediaSession(state.currentAyah, state.currentSurahName);
     }
-  }, [state.currentAyah, state.currentSurahName]);
+  }, [state.currentAyah, state.currentSurahName, updateMediaSession]);
 
   const play = useCallback((ayah: Ayah, surahName: string, playlist?: Ayah[], startIndex?: number) => {
     const audio = audioRef.current!;
@@ -148,7 +244,9 @@ export function QuranPlayerProvider({ children }: { children: React.ReactNode })
     audio.pause();
     audio.src = "";
     setState((s) => ({ ...s, isPlaying: false, currentAyah: null, playlist: [], playlistIndex: 0 }));
-  }, []);
+    releaseWakeLock();
+    updatePlaybackState(false);
+  }, [releaseWakeLock, updatePlaybackState]);
 
   const next = useCallback(() => {
     setState((prev) => {
@@ -179,8 +277,11 @@ export function QuranPlayerProvider({ children }: { children: React.ReactNode })
   }, []);
 
   const seek = useCallback((time: number) => {
-    if (audioRef.current) audioRef.current.currentTime = time;
-  }, []);
+    if (audioRef.current) {
+      audioRef.current.currentTime = time;
+      updatePositionState();
+    }
+  }, [updatePositionState]);
 
   const setReciter = useCallback((id: string) => {
     localStorage.setItem("quran-reciter", id);
