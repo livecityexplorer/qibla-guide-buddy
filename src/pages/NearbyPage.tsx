@@ -82,13 +82,25 @@ function buildAddress(tags: Record<string, string>): string {
   return parts.length > 0 ? parts.join(", ") : tags["addr:full"] || "";
 }
 
+async function fetchOverpassWithRetry(query: string, retries = 2): Promise<Response> {
+  for (let i = 0; i <= retries; i++) {
+    const res = await fetch("https://overpass-api.de/api/interpreter", {
+      method: "POST",
+      headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      body: `data=${encodeURIComponent(query)}`,
+    });
+    if (res.status === 429 && i < retries) {
+      await new Promise(r => setTimeout(r, 3000 * (i + 1)));
+      continue;
+    }
+    return res;
+  }
+  throw new Error("Overpass API rate limited");
+}
+
 async function searchNearby(lat: number, lon: number, type: PlaceType | "all", radius = 5000): Promise<NearbyPlace[]> {
   const query = buildOverpassQuery(lat, lon, radius, type);
-  const res = await fetch("https://overpass-api.de/api/interpreter", {
-    method: "POST",
-    headers: { "Content-Type": "application/x-www-form-urlencoded" },
-    body: `data=${encodeURIComponent(query)}`,
-  });
+  const res = await fetchOverpassWithRetry(query);
 
   if (!res.ok) throw new Error(`Overpass API error: ${res.status}`);
   const data = await res.json();
