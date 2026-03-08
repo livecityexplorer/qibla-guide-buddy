@@ -39,14 +39,16 @@ const DEFAULT_SETTINGS: AdhanSettings = {
 export function getAdhanSettings(): AdhanSettings {
   try {
     const stored = localStorage.getItem(STORAGE_KEY);
-    if (stored) return { ...DEFAULT_SETTINGS, ...JSON.parse(stored) };
+    if (stored) {
+      const parsed = JSON.parse(stored);
+      return { ...DEFAULT_SETTINGS, ...parsed, prayers: { ...DEFAULT_SETTINGS.prayers, ...parsed.prayers } };
+    }
   } catch {}
   return DEFAULT_SETTINGS;
 }
 
 export function saveAdhanSettings(settings: AdhanSettings): void {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(settings));
-  // Re-schedule after saving
   scheduleAdhan(settings);
 }
 
@@ -68,16 +70,13 @@ export function playAdhan(settings: AdhanSettings): void {
   audio.volume = settings.volume;
   audio.loop = false;
 
-  // Try to play - may fail if no user gesture
   const playPromise = audio.play();
   if (playPromise) {
     playPromise.catch((err) => {
       console.warn("Audio playback blocked:", err);
-      // Fallback: show notification with sound
     });
   }
 
-  // Also fire a notification for background/screen-off
   showAdhanNotification(settings);
 }
 
@@ -88,40 +87,75 @@ export function stopAdhan(): void {
   }
 }
 
-export async function requestNotificationPermission(): Promise<boolean> {
-  if (!("Notification" in window)) return false;
-  if (Notification.permission === "granted") return true;
-  if (Notification.permission === "denied") return false;
-  const result = await Notification.requestPermission();
-  return result === "granted";
+/** Check if notifications are supported in the current context */
+export function isNotificationSupported(): boolean {
+  return typeof window !== "undefined" && "Notification" in window;
+}
+
+/** Check current notification permission state */
+export function getNotificationPermission(): "granted" | "denied" | "default" | "unsupported" {
+  if (!isNotificationSupported()) return "unsupported";
+  return Notification.permission;
+}
+
+/**
+ * Request notification permission.
+ * Returns: { granted: boolean, reason?: string }
+ */
+export async function requestNotificationPermission(): Promise<{ granted: boolean; reason?: string }> {
+  if (!isNotificationSupported()) {
+    return { granted: false, reason: "Notifications are not supported in this browser or context. Try opening the app directly (not in an iframe)." };
+  }
+  
+  if (Notification.permission === "granted") {
+    return { granted: true };
+  }
+  
+  if (Notification.permission === "denied") {
+    return { granted: false, reason: "Notifications are blocked. Please go to your browser settings and allow notifications for this site, then try again." };
+  }
+  
+  try {
+    const result = await Notification.requestPermission();
+    if (result === "granted") {
+      return { granted: true };
+    }
+    if (result === "denied") {
+      return { granted: false, reason: "Notification permission was denied. Please enable notifications in your browser settings." };
+    }
+    return { granted: false, reason: "Notification permission was dismissed. Please try again and click 'Allow' when prompted." };
+  } catch (err) {
+    return { granted: false, reason: "Could not request notification permission. This may happen in embedded previews — try opening the app in a new tab." };
+  }
 }
 
 function showAdhanNotification(settings: AdhanSettings): void {
-  if (!("Notification" in window) || Notification.permission !== "granted") return;
+  if (!isNotificationSupported() || Notification.permission !== "granted") return;
 
   const now = new Date();
   const prayerName = getCurrentPrayerName(now);
 
-  // Use service worker notification for background support
+  const title = "🕌 Adhan - " + (prayerName || "Prayer Time");
+  const body = `It's time for ${prayerName || "prayer"}. May Allah accept your prayers.`;
+  const options = {
+    body,
+    icon: "/favicon.ico",
+    badge: "/favicon.ico",
+    tag: "adhan-notification",
+    requireInteraction: true,
+    silent: false,
+  };
+
   if ("serviceWorker" in navigator && navigator.serviceWorker.controller) {
     navigator.serviceWorker.ready.then((registration) => {
-      registration.showNotification("🕌 Adhan - " + (prayerName || "Prayer Time"), {
-        body: `It's time for ${prayerName || "prayer"}. May Allah accept your prayers.`,
-        icon: "/favicon.ico",
-        badge: "/favicon.ico",
-        tag: "adhan-notification",
-        requireInteraction: true,
-        silent: false,
-      });
+      registration.showNotification(title, options);
+    }).catch(() => {
+      new Notification(title, options);
     });
   } else {
-    new Notification("🕌 Adhan - " + (prayerName || "Prayer Time"), {
-      body: `It's time for ${prayerName || "prayer"}. May Allah accept your prayers.`,
-      icon: "/favicon.ico",
-      tag: "adhan-notification",
-      requireInteraction: true,
-      silent: false,
-    });
+    try {
+      new Notification(title, options);
+    } catch {}
   }
 }
 
@@ -144,7 +178,6 @@ function getCurrentPrayerName(now: Date): string | null {
 }
 
 export function scheduleAdhan(settings: AdhanSettings): void {
-  // Clear existing timers
   scheduledTimers.forEach((id) => clearTimeout(id));
   scheduledTimers = [];
 
@@ -159,18 +192,14 @@ export function scheduleAdhan(settings: AdhanSettings): void {
     const [h, m] = timeStr.split(":").map(Number);
     const prayerMinutes = h * 60 + m;
     let diffMs = (prayerMinutes - currentMinutes) * 60 * 1000;
-
-    // Subtract seconds already passed in this minute
     diffMs -= now.getSeconds() * 1000;
 
     if (diffMs <= 0) {
-      // Already passed today, schedule for tomorrow
       diffMs += 24 * 60 * 60 * 1000;
     }
 
     const timerId = window.setTimeout(() => {
       playAdhan(settings);
-      // Reschedule for the next day
       const nextTimer = window.setTimeout(() => {
         scheduleAdhan(settings);
       }, 1000);
@@ -182,14 +211,12 @@ export function scheduleAdhan(settings: AdhanSettings): void {
   }
 }
 
-// Initialize: register service worker message handler
 export function initAdhanService(): void {
   const settings = getAdhanSettings();
   if (settings.enabled) {
     scheduleAdhan(settings);
   }
 
-  // Listen for visibility changes to reschedule
   document.addEventListener("visibilitychange", () => {
     if (document.visibilityState === "visible") {
       const s = getAdhanSettings();
@@ -197,7 +224,6 @@ export function initAdhanService(): void {
     }
   });
 
-  // Keep alive with periodic check (for background reliability)
   setInterval(() => {
     const s = getAdhanSettings();
     if (!s.enabled) return;
@@ -206,5 +232,5 @@ export function initAdhanService(): void {
     if (prayerName && s.prayers[prayerName as keyof AdhanSettings["prayers"]]) {
       playAdhan(s);
     }
-  }, 30000); // Check every 30 seconds
+  }, 30000);
 }
