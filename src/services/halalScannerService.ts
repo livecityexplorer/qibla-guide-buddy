@@ -72,6 +72,20 @@ function detectPorkFromMetadata(name: string, categories: string[]): string[] {
   return detected;
 }
 
+// Check product name and categories for alcohol indicators
+function detectAlcoholFromMetadata(name: string, categories: string[]): boolean {
+  const combined = `${name} ${categories.join(" ")}`.toLowerCase();
+  for (const kw of HARAM_ALCOHOL_KEYWORDS) {
+    const kwLower = kw.toLowerCase();
+    // Word boundary check to avoid false positives (e.g. "ginger" matching "gin")
+    const regex = new RegExp(`\\b${kwLower.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`, 'i');
+    if (regex.test(combined)) {
+      return true;
+    }
+  }
+  return false;
+}
+
 export async function searchByBarcode(barcode: string): Promise<ProductResult | null> {
   // Try Open Food Facts first, then Open Beauty Facts
   const result = await _searchBarcodeFromAPI(OFF_API, barcode, "openfoodfacts");
