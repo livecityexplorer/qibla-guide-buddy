@@ -408,7 +408,7 @@ const CameraScanner = ({ onDetected, onManualEntry }: { onDetected: (code: strin
       const scanner = new Html5Qrcode("boycott-barcode-reader", { verbose: false });
       html5QrCodeRef.current = scanner;
 
-      // Stop the warm-up stream now that we're about to start html5-qrcode
+      // Stop warm-up stream right before scanner.start so camera device is free
       stream.getTracks().forEach((t) => t.stop());
 
       await scanner.start(

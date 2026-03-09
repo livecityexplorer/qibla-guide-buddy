@@ -238,9 +238,6 @@ const CameraScanner = ({
       const scanner = new Html5Qrcode("barcode-reader", { verbose: false });
       html5QrCodeRef.current = scanner;
 
-      // Stop the warm-up stream now that we're about to start html5-qrcode
-      stream.getTracks().forEach((t) => t.stop());
-
       const config: any = {
         fps: 12,
         qrbox: { width: 280, height: 150 },
@@ -258,6 +255,9 @@ const CameraScanner = ({
           SupportedFormats.ITF,
         ].filter(Boolean);
       }
+
+      // Stop warm-up stream right before scanner.start so camera device is free
+      stream.getTracks().forEach((t) => t.stop());
 
       await scanner.start(
         { facingMode: "environment" },
