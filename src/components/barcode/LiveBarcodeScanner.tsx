@@ -101,9 +101,6 @@ const LiveBarcodeScanner = ({
       } catch {}
       controlsRef.current = null;
       try {
-        readerRef.current?.reset?.();
-      } catch {}
-      try {
         streamRef.current?.getTracks().forEach((t) => t.stop());
       } catch {}
       streamRef.current = null;
