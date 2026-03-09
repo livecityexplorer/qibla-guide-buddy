@@ -297,7 +297,7 @@ const QiblaPage = () => {
             </p>
           )}
           {accuracy === "low" && heading !== null && (
-            <p className="text-[10px] text-amber-500">
+            <p className="text-[10px] text-accent-foreground/70">
               ⚠ Low accuracy — wave your phone in a figure-8 to calibrate
             </p>
           )}
