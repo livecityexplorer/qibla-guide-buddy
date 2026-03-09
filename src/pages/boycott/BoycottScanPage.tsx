@@ -2,12 +2,13 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   ArrowLeft, Camera, Keyboard, Clipboard, Loader2, ScanLine,
-  ShieldAlert, ShieldCheck, FlashlightOff, Flashlight, Package,
+  ShieldAlert, ShieldCheck, Package,
   Factory, MapPin, Tag, Leaf, ExternalLink, ChevronDown
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { lookupBarcode, matchWithBoycott, type BoycottScanResult } from "@/services/boycottScanService";
 import { getLevelConfig } from "@/data/boycottDirectory";
+import LiveBarcodeScanner from "@/components/barcode/LiveBarcodeScanner";
 
 const BoycottScanPage = () => {
   const navigate = useNavigate();
