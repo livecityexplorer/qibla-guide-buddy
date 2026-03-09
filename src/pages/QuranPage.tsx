@@ -198,33 +198,60 @@ const QuranPage = () => {
 
   return (
     <div className="min-h-screen pb-20">
-      <div className="gradient-emerald px-4 pb-6 pt-12 islamic-pattern">
-        <div className="flex items-center justify-between mb-4">
-          <button
-            onClick={() => (selectedSurah ? setSelectedSurah(null) : navigate("/"))}
-            className="flex items-center gap-2 text-primary-foreground/80"
-          >
-            <ArrowLeft size={20} />
-            <span className="text-sm">Back</span>
-          </button>
+      {/* ── Enhanced Hero Header ── */}
+      <div className="relative overflow-hidden">
+        {/* Layered gradient background */}
+        <div className="absolute inset-0 gradient-emerald" />
+        <div className="absolute inset-0 bg-gradient-to-b from-black/20 via-transparent to-black/10" />
+        <div className="absolute inset-0 islamic-pattern opacity-80" />
+        {/* Decorative geometric circles */}
+        <div className="absolute -top-16 -right-16 w-48 h-48 rounded-full border border-primary-foreground/10" />
+        <div className="absolute -top-8 -right-8 w-32 h-32 rounded-full border border-primary-foreground/5" />
+        <div className="absolute bottom-0 left-0 w-24 h-24 rounded-full border border-primary-foreground/5 -mb-12 -ml-12" />
 
-          {/* Reciter selector */}
-          <Select value={player.reciter} onValueChange={player.setReciter}>
-            <SelectTrigger className="w-auto max-w-[160px] h-8 text-xs bg-primary-foreground/20 border-0 text-primary-foreground">
-              <Volume2 size={12} className="mr-1" />
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {RECITERS.map((r) => (
-                <SelectItem key={r.id} value={r.id} className="text-xs">
-                  {r.label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+        <div className="relative px-4 pb-8 pt-12">
+          <div className="flex items-center justify-between mb-6">
+            <button
+              onClick={() => (selectedSurah ? setSelectedSurah(null) : navigate("/"))}
+              className="flex items-center gap-2 text-primary-foreground/80 hover:text-primary-foreground transition-colors"
+            >
+              <ArrowLeft size={20} />
+              <span className="text-sm font-medium">Back</span>
+            </button>
+
+            {/* Reciter selector */}
+            <Select value={player.reciter} onValueChange={player.setReciter}>
+              <SelectTrigger className="w-auto max-w-[160px] h-8 text-xs bg-primary-foreground/15 backdrop-blur-sm border border-primary-foreground/20 text-primary-foreground rounded-full px-3">
+                <Volume2 size={12} className="mr-1.5" />
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {RECITERS.map((r) => (
+                  <SelectItem key={r.id} value={r.id} className="text-xs">
+                    {r.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          {/* Title area with decorative Bismillah */}
+          <div className="text-center">
+            <p className="text-primary-foreground/40 text-2xl font-arabic mb-1">﷽</p>
+            <h1 className="text-3xl font-bold text-primary-foreground tracking-tight">
+              Holy Quran
+            </h1>
+            <p className="mt-1.5 text-sm text-primary-foreground/60 font-medium">
+              القرآن الكريم
+            </p>
+            <p className="mt-1 text-xs text-primary-foreground/40">
+              Read, listen & reflect on the words of Allah
+            </p>
+          </div>
         </div>
-        <h1 className="text-2xl font-bold text-primary-foreground">Holy Quran</h1>
-        <p className="mt-1 text-sm text-primary-foreground/70">Read, listen & reflect</p>
+
+        {/* Curved bottom edge */}
+        <div className="absolute bottom-0 left-0 right-0 h-4 bg-background rounded-t-[24px]" />
       </div>
 
       {selectedSurah === null ? (
@@ -232,46 +259,52 @@ const QuranPage = () => {
           key="list"
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
-          className="px-4 -mt-3 pb-6"
+          className="px-4 pb-6"
         >
           {/* Resume bookmark */}
           {bookmark && (
-            <button
+            <motion.button
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
               onClick={handleResumeBookmark}
-              className="mb-3 w-full flex items-center gap-3 rounded-xl bg-primary/10 border border-primary/20 p-3 text-left transition-all active:scale-[0.98]"
+              className="mb-4 w-full flex items-center gap-3 rounded-2xl bg-gradient-to-r from-primary/10 to-primary/5 border border-primary/20 p-4 text-left transition-all active:scale-[0.98] shadow-sm"
             >
-              <BookmarkCheck size={20} className="text-primary shrink-0" />
+              <div className="h-10 w-10 rounded-xl gradient-emerald flex items-center justify-center shadow-emerald shrink-0">
+                <BookmarkCheck size={18} className="text-primary-foreground" />
+              </div>
               <div className="flex-1 min-w-0">
-                <p className="text-sm font-semibold text-foreground">Continue Reading</p>
+                <p className="text-sm font-bold text-foreground">Continue Reading</p>
                 <p className="text-xs text-muted-foreground truncate">
                   {bookmark.surahName} · Ayah {bookmark.ayahNumber}
                 </p>
               </div>
-              <span className="text-xs text-muted-foreground shrink-0">
+              <span className="text-[10px] text-muted-foreground shrink-0 bg-muted px-2 py-1 rounded-full">
                 {new Date(bookmark.timestamp).toLocaleDateString()}
               </span>
-            </button>
+            </motion.button>
           )}
 
           {/* Search */}
-          <div className="relative mb-3">
+          <div className="relative mb-4">
             <Search
               size={18}
-              className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground"
+              className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground"
             />
             <input
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              placeholder="Search surah..."
-              className="w-full rounded-xl border border-border bg-card py-3 pl-10 pr-4 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+              placeholder="Search surah by name or number..."
+              className="w-full rounded-2xl border border-border bg-card py-3.5 pl-11 pr-4 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/50 shadow-sm transition-shadow focus:shadow-md"
             />
           </div>
 
           {/* Translation selector */}
-          <div className="mb-4 flex items-center gap-2">
-            <Globe size={14} className="text-muted-foreground shrink-0" />
+          <div className="mb-5 flex items-center gap-2 bg-card rounded-xl border border-border p-2.5 shadow-sm">
+            <div className="h-8 w-8 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
+              <Globe size={14} className="text-primary" />
+            </div>
             <Select value={translationEdition} onValueChange={handleTranslationChange}>
-              <SelectTrigger className="w-full h-9 text-xs">
+              <SelectTrigger className="w-full h-9 text-xs border-0 bg-transparent shadow-none">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent className="max-h-60">
@@ -282,6 +315,14 @@ const QuranPage = () => {
                 ))}
               </SelectContent>
             </Select>
+          </div>
+
+          {/* Surah count badge */}
+          <div className="flex items-center justify-between mb-3">
+            <h2 className="text-sm font-bold text-foreground">All Surahs</h2>
+            <span className="text-[10px] font-medium text-muted-foreground bg-muted px-2 py-1 rounded-full">
+              {filtered.length} of 114
+            </span>
           </div>
 
           {loadingSurahs ? (
@@ -295,20 +336,27 @@ const QuranPage = () => {
                   key={surah.number}
                   initial={{ opacity: 0, y: 10 }}
                   animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: Math.min(i * 0.02, 0.5) }}
+                  transition={{ delay: Math.min(i * 0.015, 0.4) }}
                   onClick={() => setSelectedSurah(surah.number)}
-                  className="flex w-full items-center gap-4 rounded-xl bg-card p-4 text-left shadow-sm transition-all hover:shadow-md active:scale-[0.98]"
+                  className="flex w-full items-center gap-3 rounded-2xl bg-card p-4 text-left shadow-sm border border-border/50 transition-all hover:shadow-md hover:border-primary/20 active:scale-[0.98]"
                 >
-                  <div className="flex h-10 w-10 items-center justify-center rounded-lg gradient-emerald shrink-0">
-                    <span className="text-sm font-bold text-primary-foreground">{surah.number}</span>
+                  {/* Surah number diamond */}
+                  <div className="relative h-11 w-11 shrink-0">
+                    <div className="absolute inset-0 rotate-45 rounded-lg gradient-emerald shadow-emerald" />
+                    <span className="absolute inset-0 flex items-center justify-center text-sm font-bold text-primary-foreground">
+                      {surah.number}
+                    </span>
                   </div>
                   <div className="flex-1 min-w-0">
-                    <p className="font-semibold text-foreground">{surah.englishName}</p>
-                    <p className="text-xs text-muted-foreground truncate">
-                      {surah.englishNameTranslation} · {surah.numberOfAyahs} ayahs · {surah.revelationType}
+                    <p className="font-bold text-foreground text-[15px]">{surah.englishName}</p>
+                    <p className="text-xs text-muted-foreground truncate mt-0.5">
+                      {surah.englishNameTranslation} · {surah.numberOfAyahs} ayahs
                     </p>
+                    <span className="inline-block mt-1 text-[10px] font-medium text-primary/70 bg-primary/8 px-1.5 py-0.5 rounded">
+                      {surah.revelationType}
+                    </span>
                   </div>
-                  <p className="text-lg font-arabic text-primary shrink-0">{surah.name}</p>
+                  <p className="text-xl font-arabic text-primary shrink-0 leading-tight">{surah.name}</p>
                 </motion.button>
               ))}
             </div>
