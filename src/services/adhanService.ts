@@ -375,8 +375,12 @@ export function scheduleAdhan(settings: AdhanSettings): void {
     if (diffMs <= 0) diffMs += 86400000;
 
     const timerId = window.setTimeout(() => {
-      playAdhan(settings);
-      const nextTimer = window.setTimeout(() => scheduleAdhan(settings), 2000);
+      const latest = getAdhanSettings();
+      if (!latest.enabled) return;
+      if (!latest.prayers[prayerName as keyof AdhanSettings["prayers"]]) return;
+
+      playAdhan(latest);
+      const nextTimer = window.setTimeout(() => scheduleAdhan(getAdhanSettings()), 2000);
       scheduledTimers.push(nextTimer);
     }, diffMs);
     scheduledTimers.push(timerId);
