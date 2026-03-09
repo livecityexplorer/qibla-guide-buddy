@@ -490,15 +490,28 @@ const BarcodeScanner = ({ onDetected, onManualEntry }: { onDetected: (code: stri
         throw new Error("Camera API not available. Please use HTTPS or a supported browser.");
       }
 
+      console.log("[Scanner] Requesting camera permission via getUserMedia...");
+
       // Must be invoked from a user gesture on some browsers (Safari/iOS)
-      const stream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: "environment" },
-      });
+      let stream: MediaStream;
+      try {
+        stream = await navigator.mediaDevices.getUserMedia({
+          video: { facingMode: "environment" },
+        });
+      } catch (e) {
+        console.log("[Scanner] facingMode:environment failed, trying video:true", e);
+        stream = await navigator.mediaDevices.getUserMedia({ video: true });
+      }
+
+      console.log("[Scanner] Camera permission granted, tracks:", stream.getTracks().length);
 
       await stopScanner();
 
       const mod: any = await import("html5-qrcode");
-      if (!scannerRef.current) return;
+      if (!scannerRef.current) {
+        stream.getTracks().forEach((t) => t.stop());
+        return;
+      }
 
       const Html5Qrcode = mod.Html5Qrcode;
       const SupportedFormats = mod.Html5QrcodeSupportedFormats;
@@ -506,11 +519,8 @@ const BarcodeScanner = ({ onDetected, onManualEntry }: { onDetected: (code: stri
       const scanner = new Html5Qrcode("barcode-scanner-region", { verbose: false });
       html5QrCodeRef.current = scanner;
 
-      // Stop the warm-up stream now that we're about to start html5-qrcode
-      stream.getTracks().forEach((t) => t.stop());
-
       const config: any = {
-        fps: 12,
+        fps: 10,
         qrbox: (viewfinderWidth: number, viewfinderHeight: number) => {
           const width = Math.min(420, Math.max(260, Math.floor(viewfinderWidth * 0.9)));
           const height = Math.min(220, Math.max(120, Math.floor(viewfinderHeight * 0.35)));
@@ -534,33 +544,55 @@ const BarcodeScanner = ({ onDetected, onManualEntry }: { onDetected: (code: stri
         ].filter(Boolean);
       }
 
-      await scanner.start(
-        { facingMode: "environment" },
-        config,
-        (decodedText: string) => {
-          if (!detectedRef.current) {
-            detectedRef.current = true;
-            if (navigator.vibrate) navigator.vibrate(200);
-            scanner
-              .stop()
-              .catch(() => {})
-              .finally(() => {
-                try {
-                  scanner.clear?.();
-                } catch {}
-              });
-            onDetected(decodedText);
-          }
-        },
-        () => {
-          // ignore per-frame decode errors
-        },
-      );
+      // Release warm-up stream so html5-qrcode can acquire the camera
+      stream.getTracks().forEach((t) => t.stop());
 
+      console.log("[Scanner] Starting html5-qrcode scanner...");
+
+      // Try environment camera first, fallback to any camera
+      try {
+        await scanner.start(
+          { facingMode: "environment" },
+          config,
+          (decodedText: string) => {
+            if (!detectedRef.current) {
+              detectedRef.current = true;
+              if (navigator.vibrate) navigator.vibrate(200);
+              scanner.stop().catch(() => {}).finally(() => { try { scanner.clear?.(); } catch {} });
+              onDetected(decodedText);
+            }
+          },
+          () => {},
+        );
+      } catch (startErr) {
+        console.log("[Scanner] facingMode start failed, trying fallback...", startErr);
+        // Fallback: use any available camera
+        const cameras = await Html5Qrcode.getCameras();
+        if (cameras && cameras.length > 0) {
+          const cameraId = cameras[cameras.length - 1].id; // last camera is usually rear
+          await scanner.start(
+            cameraId,
+            config,
+            (decodedText: string) => {
+              if (!detectedRef.current) {
+                detectedRef.current = true;
+                if (navigator.vibrate) navigator.vibrate(200);
+                scanner.stop().catch(() => {}).finally(() => { try { scanner.clear?.(); } catch {} });
+                onDetected(decodedText);
+              }
+            },
+            () => {},
+          );
+        } else {
+          throw new Error("No cameras found on this device.");
+        }
+      }
+
+      console.log("[Scanner] Scanner started successfully");
       setHasStarted(true);
       setIsScanning(true);
     } catch (err: any) {
-      console.error("Camera error:", err);
+      console.error("[Scanner] Camera error:", err);
       let errorMessage = "Could not start camera. Please use manual entry instead.";
       
       if (err?.name === "NotAllowedError" || err?.message?.includes("NotAllowed") || err?.message?.includes("Permission denied")) {
