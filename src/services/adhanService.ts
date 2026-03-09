@@ -38,15 +38,29 @@ const DEFAULT_SETTINGS: AdhanSettings = {
   },
 };
 
-// Prayer times (static for now - can be made dynamic with API)
-const PRAYER_SCHEDULE: Record<string, string> = {
-  Fajr: "05:23",
-  Sunrise: "06:45",
-  Dhuhr: "12:30",
-  Asr: "15:45",
-  Maghrib: "18:12",
-  Isha: "19:42",
-};
+// Dynamic prayer schedule - loaded from API cache or defaults
+function getPrayerSchedule(): Record<string, string> {
+  try {
+    const cached = localStorage.getItem("prayer-times-cache");
+    if (cached) {
+      const parsed = JSON.parse(cached);
+      const today = new Date();
+      const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`;
+      if (parsed.date === todayStr && parsed.times) {
+        return parsed.times;
+      }
+    }
+  } catch {}
+  // Fallback defaults (will be replaced once API loads)
+  return {
+    Fajr: "05:00",
+    Sunrise: "06:30",
+    Dhuhr: "12:30",
+    Asr: "15:30",
+    Maghrib: "18:00",
+    Isha: "19:30",
+  };
+}
 
 // Beautiful pre-reminder messages for each prayer
 const PRE_REMINDER_MESSAGES: Record<string, { title: string; body: string }> = {
@@ -249,7 +263,7 @@ export async function requestNotificationPermission(): Promise<{ granted: boolea
 
 function getCurrentPrayerName(now: Date): string | null {
   const currentTime = `${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}`;
-  for (const [name, time] of Object.entries(PRAYER_SCHEDULE)) {
+  for (const [name, time] of Object.entries(getPrayerSchedule())) {
     if (time === currentTime) return name;
   }
   return null;
@@ -326,7 +340,7 @@ function syncSettingsToSW(settings: AdhanSettings) {
       data: {
         ...settings,
         adhanOptions: ADHAN_OPTIONS,
-        prayerSchedule: PRAYER_SCHEDULE,
+        prayerSchedule: getPrayerSchedule(),
         preReminderMessages: PRE_REMINDER_MESSAGES,
         prayerTimeMessages: PRAYER_TIME_MESSAGES,
       },
@@ -374,10 +388,10 @@ export function scheduleAdhan(settings: AdhanSettings): void {
   const now = new Date();
   const currentMs = now.getHours() * 3600000 + now.getMinutes() * 60000 + now.getSeconds() * 1000;
 
-  for (const [prayerName, timeStr] of Object.entries(PRAYER_SCHEDULE)) {
+  for (const [prayerName, timeStr] of Object.entries(getPrayerSchedule())) {
     if (!settings.prayers[prayerName as keyof AdhanSettings["prayers"]]) continue;
 
-    const [h, m] = timeStr.split(":").map(Number);
+    const [h, m] = (timeStr as string).split(":").map(Number);
     const prayerMs = h * 3600000 + m * 60000;
 
     // Schedule at prayer time

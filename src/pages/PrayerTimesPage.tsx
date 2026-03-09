@@ -1,6 +1,6 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
-import { ArrowLeft, Bell, BellOff, Volume2, Play, Square, Settings } from "lucide-react";
+import { ArrowLeft, Bell, BellOff, Volume2, Play, Square, Settings, MapPin, RefreshCw } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { Switch } from "@/components/ui/switch";
@@ -8,17 +8,18 @@ import { Slider } from "@/components/ui/slider";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useAdhan } from "@/hooks/useAdhan";
 import { ADHAN_OPTIONS, type AdhanSettings } from "@/services/adhanService";
+import { getPrayerTimes, type PrayerTimesData } from "@/services/prayerTimesService";
+import { toast } from "sonner";
 
-const PRAYER_TIMES = [
-  { nameKey: "prayer.fajr", time: "05:23", arabic: "الفجر", icon: "🌅" },
-  { nameKey: "prayer.sunrise", time: "06:45", arabic: "الشروق", icon: "🌄" },
-  { nameKey: "prayer.dhuhr", time: "12:30", arabic: "الظهر", icon: "☀️" },
-  { nameKey: "prayer.asr", time: "15:45", arabic: "العصر", icon: "🌤" },
-  { nameKey: "prayer.maghrib", time: "18:12", arabic: "المغرب", icon: "🌅" },
-  { nameKey: "prayer.isha", time: "19:42", arabic: "العشاء", icon: "🌙" },
+const PRAYER_META = [
+  { nameKey: "prayer.fajr", key: "Fajr" as const, arabic: "الفجر", icon: "🌅" },
+  { nameKey: "prayer.sunrise", key: "Sunrise" as const, arabic: "الشروق", icon: "🌄" },
+  { nameKey: "prayer.dhuhr", key: "Dhuhr" as const, arabic: "الظهر", icon: "☀️" },
+  { nameKey: "prayer.asr", key: "Asr" as const, arabic: "العصر", icon: "🌤" },
+  { nameKey: "prayer.maghrib", key: "Maghrib" as const, arabic: "المغرب", icon: "🌅" },
+  { nameKey: "prayer.isha", key: "Isha" as const, arabic: "العشاء", icon: "🌙" },
 ];
 
-// Map nameKey to AdhanSettings prayer key
 const PRAYER_KEY_MAP: Record<string, keyof AdhanSettings["prayers"]> = {
   "prayer.fajr": "Fajr",
   "prayer.sunrise": "Sunrise",
@@ -37,6 +38,37 @@ const PrayerTimesPage = () => {
   const { t } = useTranslation();
   const [showSettings, setShowSettings] = useState(false);
   const { settings, notificationGranted, isPlaying, updateSettings, setPrayerEnabled, enableAdhan, disableAdhan, testAdhan, stopPlayback } = useAdhan();
+
+  const [prayerTimes, setPrayerTimes] = useState<PrayerTimesData | null>(null);
+  const [locationName, setLocationName] = useState<string>("");
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string>("");
+
+  const loadTimes = async () => {
+    setLoading(true);
+    setError("");
+    try {
+      const result = await getPrayerTimes();
+      setPrayerTimes(result.times);
+      setLocationName(result.locationName);
+    } catch (err: any) {
+      console.error("Failed to load prayer times:", err);
+      if (err?.code === 1) {
+        setError("Location access denied. Please enable location permissions.");
+      } else {
+        setError("Could not load prayer times. Check your connection.");
+      }
+      toast.error("Could not load prayer times", {
+        description: "Please enable location access and try again.",
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    loadTimes();
+  }, []);
 
   return (
     <div className="min-h-screen">
@@ -63,6 +95,15 @@ const PrayerTimesPage = () => {
             day: "numeric",
           })}
         </p>
+        {locationName && (
+          <div className="mt-1 flex items-center gap-1 text-xs text-primary-foreground/60">
+            <MapPin size={12} />
+            <span>{locationName}</span>
+            <button onClick={loadTimes} className="ml-1 p-0.5 rounded hover:bg-primary-foreground/10">
+              <RefreshCw size={12} className={loading ? "animate-spin" : ""} />
+            </button>
+          </div>
+        )}
       </div>
 
       {showSettings && (
@@ -133,27 +174,19 @@ const PrayerTimesPage = () => {
 
               <div className="mb-4">
                 <label className="text-xs font-medium text-muted-foreground mb-2 block">{t("prayer.enableForEach")}</label>
-
                 <div className="grid grid-cols-2 gap-2">
-                  {PRAYER_TIMES.map((p) => {
-                    const key = prayerSettingsKey(p.nameKey);
-                    if (!key) return null;
-
-                    const checked = settings.prayers[key] ?? false;
-
+                  {PRAYER_META.map((p) => {
+                    const checked = settings.prayers[p.key] ?? false;
                     return (
-                      <div
-                        key={p.nameKey}
-                        className="flex items-center justify-between gap-3 rounded-lg bg-secondary/50 px-3 py-2.5"
-                      >
+                      <div key={p.key} className="flex items-center justify-between gap-3 rounded-lg bg-secondary/50 px-3 py-2.5">
                         <button
                           type="button"
-                          onClick={() => setPrayerEnabled(key, !checked)}
+                          onClick={() => setPrayerEnabled(p.key, !checked)}
                           className="flex-1 rounded text-left text-xs font-medium text-foreground focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                         >
                           {t(p.nameKey)}
                         </button>
-                        <Switch checked={checked} onCheckedChange={(next) => setPrayerEnabled(key, next)} />
+                        <Switch checked={checked} onCheckedChange={(next) => setPrayerEnabled(p.key, next)} />
                       </div>
                     );
                   })}
@@ -198,13 +231,29 @@ const PrayerTimesPage = () => {
       )}
 
       <div className={`px-4 ${showSettings ? "mt-3" : "-mt-4"} space-y-3 pb-6`}>
-        {PRAYER_TIMES.map((prayer, i) => {
+        {loading && !prayerTimes && (
+          <div className="flex flex-col items-center justify-center py-12 gap-3">
+            <RefreshCw size={24} className="animate-spin text-primary" />
+            <p className="text-sm text-muted-foreground">Loading prayer times for your location...</p>
+          </div>
+        )}
+
+        {error && !prayerTimes && (
+          <div className="flex flex-col items-center justify-center py-12 gap-3">
+            <p className="text-sm text-destructive">{error}</p>
+            <button onClick={loadTimes} className="rounded-lg bg-primary px-4 py-2 text-sm text-primary-foreground font-medium">
+              Retry
+            </button>
+          </div>
+        )}
+
+        {prayerTimes && PRAYER_META.map((prayer, i) => {
+          const time = prayerTimes[prayer.key];
           const key = prayerSettingsKey(prayer.nameKey);
           const checked = key ? (settings.prayers[key] ?? false) : false;
 
           const toggleFromRow = async () => {
             if (!key) return;
-            // If the global Adhan toggle is off, enable it first so per-prayer toggles actually take effect.
             if (!settings.enabled) {
               await enableAdhan();
             }
@@ -247,7 +296,7 @@ const PrayerTimesPage = () => {
                 ) : (
                   <BellOff size={14} className="text-muted-foreground/40" />
                 )}
-                <p className="text-xl font-bold text-primary">{prayer.time}</p>
+                <p className="text-xl font-bold text-primary">{time}</p>
               </div>
             </motion.div>
           );
