@@ -18,7 +18,7 @@ export default defineConfig(({ mode }) => ({
     mode === "development" && componentTagger(),
     VitePWA({
       registerType: "autoUpdate",
-      includeAssets: ["favicon.ico", "pwa-192x192.png", "pwa-512x512.png", "audio/*.mp3"],
+      includeAssets: ["favicon.png", "pwa-192x192.png", "pwa-512x512.png", "pwa-maskable-192.png", "pwa-maskable-512.png", "pwa-monochrome-512.png", "audio/*.mp3"],
       workbox: {
         globPatterns: ["**/*.{js,css,html,ico,png,svg,mp3}"],
         maximumFileSizeToCacheInBytes: 8 * 1024 * 1024,
@@ -48,9 +48,11 @@ export default defineConfig(({ mode }) => ({
         scope: "/",
         categories: ["lifestyle", "education", "utilities"],
         icons: [
-          { src: "/pwa-192x192.png", sizes: "192x192", type: "image/png" },
-          { src: "/pwa-512x512.png", sizes: "512x512", type: "image/png" },
-          { src: "/pwa-512x512.png", sizes: "512x512", type: "image/png", purpose: "maskable" },
+          { src: "/pwa-192x192.png", sizes: "192x192", type: "image/png", purpose: "any" },
+          { src: "/pwa-512x512.png", sizes: "512x512", type: "image/png", purpose: "any" },
+          { src: "/pwa-maskable-192.png", sizes: "192x192", type: "image/png", purpose: "maskable" },
+          { src: "/pwa-maskable-512.png", sizes: "512x512", type: "image/png", purpose: "maskable" },
+          { src: "/pwa-monochrome-512.png", sizes: "512x512", type: "image/png", purpose: "monochrome" },
         ],
       },
     }),
