@@ -340,7 +340,8 @@ function syncSettingsToSW(settings: AdhanSettings) {
       data: {
         ...settings,
         adhanOptions: ADHAN_OPTIONS,
-        prayerSchedugetPle: getPrayerSchedule()      preReminderMessages: PRE_REMINDER_MESSAGES,
+        prayerSchedule: getPrayerSchedule(),
+        preReminderMessages: PRE_REMINDER_MESSAGES,
         prayerTimeMessages: PRAYER_TIME_MESSAGES,
       },
     });
