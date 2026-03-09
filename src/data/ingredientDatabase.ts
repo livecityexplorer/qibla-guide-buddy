@@ -935,123 +935,410 @@ export const HARAM_PORK_KEYWORDS: string[] = [
   "black pudding", "blood sausage", "bratwurst", "frankfurter", "hot dog",
   "mortadella", "sopressata", "coppa", "capicola", "guanciale",
   "jambon", "jamón", "serrano", "iberico", "ibérico",
-  // English - Cosmetic / Personal Care specific
+  "wild boar", "boar", "suckling pig", "roast pig", "pulled pork",
+  "spare ribs", "baby back ribs", "pork knuckle", "pork trotter", "pig feet",
+  "pig ear", "pig tail", "pork crackling", "pork scratchings", "pork floss",
+  "pork jerky", "pork rinds", "pork dumpling", "char siu", "tonkatsu", "tonkotsu",
+  // English - Cosmetic / Personal Care
   "porcine collagen", "pork collagen", "pig collagen", "porcine gelatin",
   "pork tallow", "pig tallow", "sodium lardate", "porcine keratin",
   "pork bristle", "pig bristle", "pig hair", "boar bristle", "boar hair",
-  "animal bristle",
+  "animal bristle", "porcine placenta", "porcine elastin",
   // Spanish
   "cerdo", "puerco", "tocino", "manteca de cerdo", "jamón serrano",
   "jamón ibérico", "lomo", "morcilla", "butifarra", "longaniza",
   "carne de cerdo", "costilla de cerdo", "chuleta de cerdo",
-  "grasa de cerdo", "colágeno porcino",
+  "grasa de cerdo", "colágeno porcino", "gelatina de cerdo",
+  "lechón", "cochinillo", "cochinita pibil", "chicharrón",
+  "pata de cerdo", "oreja de cerdo", "manitas de cerdo",
   // French
   "porc", "cochon", "saucisson", "rillettes", "pâté", "andouille",
   "andouillette", "boudin", "boudin noir", "jambon cru", "jambon cuit",
   "lard fumé", "saindoux", "graisse de porc", "viande de porc",
-  "collagène de porc", "gélatine de porc",
+  "collagène de porc", "gélatine de porc", "cochon de lait",
+  "côtelette de porc", "filet de porc", "jambonneau", "terrine de porc",
+  "pied de porc", "oreille de porc", "couenne",
   // German
   "schwein", "schweinefleisch", "schinken", "speck", "wurst",
   "bratwurst", "leberwurst", "blutwurst", "mettwurst", "knackwurst",
   "schweineschmalz", "schweinebauch", "schweinekotelett",
-  "schweinegelatine", "schweinekollagen",
+  "schweinegelatine", "schweinekollagen", "schweinehaxe", "eisbein",
+  "schweinelende", "schweinebraten", "currywurst", "bockwurst",
+  "weißwurst", "wiener würstchen", "kassler", "kasseler",
+  "schweinshaxe", "schweinefett", "schweineleber",
   // Italian
   "maiale", "suino", "carne suina", "carne di maiale", "strutto",
-  "pancetta", "prosciutto crudo", "prosciutto cotto", "cotechino",
+  "prosciutto crudo", "prosciutto cotto", "cotechino",
   "zampone", "salame", "nduja", "grasso di maiale",
-  "gelatina di maiale", "collagene suino",
+  "gelatina di maiale", "collagene suino", "porchetta", "lardo",
+  "capocollo", "ciccioli", "coppa di testa", "soppressata",
+  "finocchiona", "culatello",
   // Portuguese
   "porco", "suíno", "presunto", "linguiça", "chouriço",
   "toucinho", "banha", "carne de porco", "lombo de porco",
-  "gelatina de porco", "colagénio de porco",
+  "gelatina de porco", "colagénio de porco", "leitão",
+  "pernil", "costela de porco", "barriga de porco", "torresmo",
+  "morcela", "alheira", "farinheira", "paio",
   // Dutch
-  "varken", "varkensvlees", "varkensvet", "ham", "spek",
-  "varkensgelatine",
+  "varken", "varkensvlees", "varkensvet", "spek",
+  "varkensgelatine", "varkenshaas", "varkensrib", "varkensschnitzel",
+  "rookworst", "leverworst", "bloedworst",
   // Turkish
-  "domuz", "domuz eti", "domuz yağı", "jambon",
-  "domuz jelatin", "domuz kolajen",
+  "domuz", "domuz eti", "domuz yağı", "domuz pastırması",
+  "domuz jelatin", "domuz kolajen", "domuz ciğeri", "domuz derisi", "domuz but",
   // Arabic
   "خنزير", "لحم خنزير", "دهن خنزير", "شحم خنزير",
-  "جيلاتين خنزير", "كولاجين خنزير",
+  "جيلاتين خنزير", "كولاجين خنزير", "لحم الخنزير",
+  "دهن الخنزير", "شحم الخنزير", "جلد الخنزير",
   // Malay/Indonesian
   "babi", "daging babi", "lemak babi", "gelatin babi",
-  // Hindi/Urdu
-  "सूअर", "خنزیر", "سور",
-  // Chinese (pinyin)
-  "zhu rou", "zhū ròu",
+  "minyak babi", "kulit babi", "babi guling", "babi panggang",
+  "bakut", "bakso babi", "sate babi",
+  // Hindi
+  "सूअर", "सूअर का मांस", "सूअर की चर्बी", "सुअर", "पोर्क", "शूकर", "वराह",
+  // Urdu
+  "خنزیر", "سور", "سور کا گوشت", "سور کی چربی",
+  // Bengali
+  "শূকর", "শুয়োর", "শুয়োরের মাংস",
+  // Chinese Simplified
+  "猪", "猪肉", "猪油", "猪皮", "猪蹄", "猪肝", "猪血", "猪肠",
+  "叉烧", "红烧肉", "回锅肉", "东坡肉", "腊肉", "猪排",
+  // Chinese Traditional
+  "豬", "豬肉", "豬油", "豬皮", "豬蹄", "豬肝", "豬血", "豬腸",
+  "叉燒", "紅燒肉", "回鍋肉", "東坡肉", "臘肉", "豬排",
   // Japanese
-  "豚", "豚肉", "ポーク", "豚コラーゲン",
+  "豚", "豚肉", "ポーク", "豚コラーゲン", "豚骨", "とんかつ",
+  "とんこつ", "チャーシュー", "角煮", "豚バラ", "豚ロース",
+  "豚カツ", "豚丼", "豚まん", "焼豚", "煮豚",
   // Korean
-  "돼지", "돼지고기",
+  "돼지", "돼지고기", "삼겹살", "족발", "보쌈", "제육",
+  "돼지갈비", "돼지껍데기", "돈까스", "순대",
   // Thai
-  "หมู",
+  "หมู", "เนื้อหมู", "หมูกรอบ", "หมูแดง", "หมูทอด", "หมูย่าง", "แหนม", "หมูยอ",
+  // Vietnamese
+  "heo", "lợn", "thịt heo", "thịt lợn", "mỡ heo", "mỡ lợn",
+  "da heo", "giò heo", "chân giò", "thịt ba chỉ", "chả lụa", "thịt quay",
   // Russian
-  "свинина", "свиной", "сало", "свиной жир",
+  "свинина", "свиной", "сало", "свиной жир", "свиная вырезка",
+  "свиные ребра", "свиная рулька", "свиная шкура", "свиная печень",
+  "свиной фарш", "свиная грудинка", "свиной окорок", "буженина",
+  "свиной желатин", "свиной коллаген",
   // Polish
   "wieprzowina", "wieprzowy", "szynka", "boczek", "słonina",
-  "żelatyna wieprzowa",
-// Generic terms that indicate pork
-  "porcina", "porcino", "suidae",
+  "żelatyna wieprzowa", "schab", "golonka", "kaszanka", "kiełbasa",
+  "wieprzowe żeberka", "wieprzowy kotlet", "smalec",
+  // Czech / Slovak
+  "vepřové", "vepřové maso", "šunka", "slanina", "klobása",
+  "vepřová želatina", "vepřové sádlo", "vepřový řízek",
+  "bravčové", "bravčové mäso", "bravčová masť",
+  // Hungarian
+  "sertés", "sertéshús", "szalonna", "disznó", "sonka",
+  "sertészsír", "kolbász", "hurka", "disznóhús",
+  // Romanian
+  "porc", "carne de porc", "slănină", "şuncă", "cârnați de porc",
+  "jumări", "grăsime de porc", "gelatină de porc",
+  // Greek
+  "χοιρινό", "χοίρος", "γουρούνι", "μπέικον", "ζαμπόν",
+  "λαρδί", "χοιρινό κρέας", "ζελατίνη χοιρινού",
+  // Swedish
+  "fläsk", "fläskkött", "skinka", "sidfläsk", "fläskfilé", "grisfett",
+  // Norwegian
+  "svinekjøtt", "svin", "skinke", "flesk", "ribbe", "svinegelatin", "svinefett",
+  // Danish
+  "svinekød", "skinke", "flæsk", "flæskesteg", "svinegelatin", "svinefedt",
+  // Finnish
+  "sianliha", "sika", "pekoni", "kinkku", "lardi", "sianrasva",
+  // Croatian / Serbian / Bosnian
+  "svinjetina", "svinjsko meso", "šunka", "slanina", "kobasica",
+  "svinjska mast", "svinjski želatin", "čvarci",
+  // Bulgarian
+  "свинско", "свинско месо", "шунка", "сланина", "свинска мас",
+  // Ukrainian
+  "свинина", "свиняча", "сало", "шинка", "ковбаса",
+  // Hebrew
+  "חזיר", "בשר חזיר",
+  // Persian / Farsi
+  "خوک", "گوشت خوک", "ژلاتین خوکی",
+  // Swahili
+  "nguruwe", "nyama ya nguruwe",
+  // Filipino / Tagalog
+  "baboy", "karne ng baboy", "lechon", "liempo", "tocino", "longganisa", "sisig",
+  // Hausa
+  "alade", "naman alade",
+  // Somali
+  "doofaar", "hilib doofaar",
+  // Amharic
+  "አሳማ", "የአሳማ ሥጋ",
+  // Uzbek / Kazakh / Kyrgyz
+  "cho'chqa", "cho'chqa go'shti", "шошқа", "шошка эти",
+  // Pashto
+  "خنځیر", "د خنځیر غوښه",
+  // Tamil
+  "பன்றி", "பன்றி இறைச்சி",
+  // Telugu
+  "పంది", "పంది మాంసం",
+  // Kannada
+  "ಹಂದಿ", "ಹಂದಿ ಮಾಂಸ",
+  // Malayalam
+  "പന്നി", "പന്നിയിറച്ചി",
+  // Sinhala
+  "ඌරු", "ඌරු මස්",
+  // Burmese / Myanmar
+  "ဝက်", "ဝက်သား",
+  // Khmer / Cambodian
+  "ជ្រូក", "សាច់ជ្រូក",
+  // Lao
+  "ໝູ", "ຊີ້ນໝູ",
+  // Mongolian
+  "гахай", "гахайн мах",
+  // Georgian
+  "ღორი", "ღორის ხორცი",
+  // Azerbaijani
+  "donuz", "donuz əti", "donuz piyi",
+  // Turkmen
+  "doňuz", "doňuz eti",
+  // Kurdish
+  "beraz", "goştê berazî",
+  // Nepali
+  "सुँगुर", "सुँगुरको मासु", "बंगुर",
+  // Malagasy
+  "kisoa", "henan-kisoa",
+  // Generic / Scientific
+  "porcina", "porcino", "suidae", "sus scrofa", "sus domesticus",
 ];
 
 // ── Alcoholic beverage / haram product keywords detected from name & categories ──
 export const HARAM_ALCOHOL_KEYWORDS: string[] = [
-  // English
+  // English - Beer & Cider
   "beer", "ale", "lager", "stout", "porter", "pilsner", "ipa", "pale ale",
   "wheat beer", "craft beer", "draft beer", "draught beer", "malt liquor",
+  "hard cider", "cider", "perry", "hard seltzer", "shandy", "radler",
+  "double ipa", "triple ipa", "imperial stout", "barleywine", "barley wine",
+  "saison", "gose", "lambic", "trappist", "abbey beer", "session ale",
+  "amber ale", "brown ale", "cream ale", "blonde ale", "golden ale",
+  "kolsch", "kölsch", "hefeweizen", "dunkel", "bock", "doppelbock",
+  "märzen", "marzen", "oktoberfest beer", "farmhouse ale", "bitter",
+  "mild ale", "old ale", "scotch ale", "berliner weisse", "witbier",
+  "dubbel", "tripel", "quadrupel",
+  // English - Wine
   "wine", "red wine", "white wine", "rosé", "champagne", "prosecco", "cava",
   "sparkling wine", "dessert wine", "fortified wine", "port wine", "sherry",
-  "vermouth", "sangria", "mulled wine",
+  "vermouth", "sangria", "mulled wine", "wine cooler", "wine coolers",
+  "port", "marsala", "madeira", "tokaji", "riesling", "chardonnay",
+  "cabernet", "merlot", "pinot noir", "pinot grigio", "sauvignon blanc",
+  "moscato", "zinfandel", "malbec", "shiraz", "syrah", "tempranillo",
+  "grenache", "beaujolais", "chianti", "barolo", "brunello",
+  "rioja", "bordeaux", "burgundy", "sauternes", "ice wine",
+  // English - Spirits & Liquor
   "whisky", "whiskey", "bourbon", "scotch", "rum", "vodka", "gin", "tequila",
   "brandy", "cognac", "armagnac", "mezcal", "absinthe", "schnapps", "grappa",
   "sake", "soju", "baijiu", "arrack", "arak", "raki", "rakı", "ouzo",
-  "liquor", "liqueur", "spirit", "spirits", "hard seltzer", "hard cider",
-  "cider", "perry", "mead", "alcoholic", "alcoholic beverage", "alcoholic drink",
-  "cocktail", "cocktails", "mixed drink",
-  // Brand names commonly known as alcohol
+  "liquor", "liqueur", "spirit", "spirits", "mead",
+  "alcoholic", "alcoholic beverage", "alcoholic drink",
+  "cocktail", "cocktails", "mixed drink", "moonshine", "hooch",
+  "bitters", "digestif", "aperitif", "proof", "abv", "alcohol by volume",
+  // Brand names - Beer
   "guinness", "heineken", "budweiser", "corona", "carlsberg", "stella artois",
-  "smirnoff", "absolut", "jack daniels", "jack daniel's", "johnnie walker",
-  "jameson", "hennessy", "rémy martin", "bacardi", "captain morgan",
-  "jägermeister", "baileys", "kahlua", "amaretto", "campari", "aperol",
-  // Spanish
-  "cerveza", "vino", "vino tinto", "vino blanco", "licor", "aguardiente",
-  "sidra", "cóctel",
-  // French
-  "bière", "vin", "vin rouge", "vin blanc", "spiritueux", "cidre",
-  // German
-  "bier", "wein", "rotwein", "weißwein", "schnaps", "likör",
-  // Arabic
-  "خمر", "بيرة", "نبيذ", "كحول", "مشروب كحولي",
-  // Turkish
-  "bira", "şarap", "rakı", "votka", "viski", "alkol", "alkollü",
-  // Malay/Indonesian
-  "bir", "arak", "tuak", "minuman beralkohol",
-  // Portuguese
-  "cerveja", "vinho", "licor", "aguardente", "cachaça",
-  // Italian
-  "birra", "vino rosso", "vino bianco", "liquore", "grappa", "amaro",
-  // Categories from OpenFoodFacts
-  "beers", "wines", "spirits", "alcoholic beverages", "alcoholic drinks",
-  "hard liquors", "distilled beverages", "fermented beverages",
-  "craft beers", "lagers", "ales", "stouts", "porters",
-  // Additional brand names
   "fosters", "becks", "beck's", "modelo", "dos equis", "peroni", "asahi",
   "kirin", "sapporo", "tiger beer", "singha", "chang beer", "tusker",
   "kilkenny", "smithwicks", "smithwick's", "harp lager", "magners",
   "strongbow", "kopparberg", "rekorderlig", "bulmers",
+  "amstel", "grolsch", "leffe", "hoegaarden", "duvel", "chimay",
+  "paulaner", "erdinger", "warsteiner", "bitburger", "krombacher",
+  "pilsner urquell", "staropramen", "kozel", "tyskie", "zywiec",
+  "lech", "okocim", "baltika", "efes", "bintang", "san miguel",
+  "kingfisher", "tuborg", "skol", "brahma", "antarctica",
+  "tsingtao", "snow beer", "yanjing", "harbin beer", "hite", "cass",
+  "lagunitas", "sierra nevada", "blue moon", "samuel adams",
+  "yuengling", "pabst", "miller lite", "coors", "michelob", "natural light",
+  "busch", "rolling rock", "newcastle", "bass ale", "tetley",
+  "boddingtons", "old speckled hen",
+  // Brand names - Spirits
+  "smirnoff", "absolut", "jack daniels", "jack daniel's", "johnnie walker",
+  "jameson", "hennessy", "rémy martin", "remy martin", "bacardi", "captain morgan",
+  "jägermeister", "jagermeister", "baileys", "kahlua", "amaretto", "campari", "aperol",
   "grey goose", "belvedere", "ketel one", "stolichnaya", "ciroc",
   "patron", "don julio", "jose cuervo", "makers mark", "maker's mark",
   "wild turkey", "jim beam", "woodford reserve", "bulleit",
   "glenfiddich", "glenlivet", "macallan", "chivas regal", "dewar's",
   "tanqueray", "bombay sapphire", "hendrick's", "gordon's gin",
+  "havana club", "mount gay", "diplomatico", "courvoisier", "martell",
+  "disaronno", "frangelico", "cointreau", "grand marnier", "triple sec",
+  "chartreuse", "benedictine", "drambuie", "sambuca", "limoncello",
+  "malibu", "tia maria", "southern comfort",
+  // Brand names - Wine & Champagne
   "moet", "moët", "dom perignon", "dom pérignon", "veuve clicquot",
   "krug", "cristal", "bollinger", "taittinger", "piper heidsieck",
-  // Common alcohol categories / descriptors
-  "wine cooler", "wine coolers", "shandy", "radler", "bitters",
-  "vermouth", "port", "marsala", "madeira", "tokaji",
-  "abv", "alcohol by volume", "proof", "double ipa", "triple ipa",
-  "imperial stout", "barleywine", "barley wine", "saison", "gose",
-  "lambic", "trappist", "abbey beer",
+  "mumm", "lanson", "laurent perrier", "pol roger",
+  "jacob's creek", "yellow tail", "barefoot wine", "robert mondavi",
+  "penfolds", "wolf blass", "oyster bay", "kim crawford", "cloudy bay",
+  // Spanish
+  "cerveza", "vino", "vino tinto", "vino blanco", "licor", "aguardiente",
+  "sidra", "cóctel", "tinto de verano", "orujo", "pacharán", "ron", "ginebra",
+  "cerveza artesanal", "bebida alcohólica",
+  // French
+  "bière", "vin", "vin rouge", "vin blanc", "spiritueux", "cidre",
+  "apéritif", "digestif", "pastis", "calvados", "eau de vie",
+  "boisson alcoolisée", "boisson alcoolique", "vin mousseux",
+  // German
+  "bier", "wein", "rotwein", "weißwein", "weisswein", "schnaps", "likör",
+  "glühwein", "weinbrand", "obstler", "korn", "doppelkorn",
+  "weizenbier", "altbier", "pils", "helles", "schwarzbier",
+  "alkoholisch", "alkoholisches getränk", "spirituose",
+  // Italian
+  "birra", "vino rosso", "vino bianco", "liquore", "grappa", "amaro",
+  "limoncello", "prosecco", "spumante", "aperitivo", "digestivo",
+  "bevanda alcolica", "birra artigianale",
+  // Portuguese
+  "cerveja", "vinho", "licor", "aguardente", "cachaça",
+  "vinho do porto", "vinho tinto", "vinho branco",
+  "ginjinha", "medronho", "bebida alcoólica", "cerveja artesanal",
+  // Dutch
+  "wijn", "rode wijn", "witte wijn", "jenever", "genever",
+  "likeur", "alcoholisch", "alcoholische drank",
+  // Russian
+  "пиво", "вино", "водка", "коньяк", "виски", "ром", "джин",
+  "текила", "ликёр", "шампанское", "бренди",
+  "самогон", "настойка", "наливка", "медовуха", "сидр",
+  "алкоголь", "алкогольный", "алкогольный напиток", "спиртное",
+  "красное вино", "белое вино", "игристое вино",
+  // Polish
+  "piwo", "wino", "wódka", "koniak", "likier", "szampan",
+  "nalewka", "bimber", "miód pitny", "alkohol", "napój alkoholowy",
+  // Czech / Slovak
+  "pivo", "víno", "koňak", "likér", "šampaňské", "slivovice", "becherovka",
+  "alkohol", "alkoholický nápoj",
+  // Hungarian
+  "sör", "bor", "pálinka", "likőr", "pezsgő", "szeszes ital", "alkohol",
+  // Romanian
+  "bere", "vin", "vodcă", "rom", "coniac", "lichior", "șampanie",
+  "țuică", "pălincă", "rachiu", "alcool", "băutură alcoolică",
+  // Greek
+  "μπύρα", "μπίρα", "κρασί", "βότκα", "ουίσκι", "ρούμι",
+  "ούζο", "τσίπουρο", "ρακί", "ρετσίνα", "metaxa",
+  "αλκοόλ", "αλκοολούχο ποτό",
+  // Arabic
+  "خمر", "بيرة", "نبيذ", "كحول", "مشروب كحولي",
+  "عرق", "ويسكي", "فودكا", "رم", "جن", "تكيلا", "براندي",
+  "شمبانيا", "مشروبات روحية", "خمور", "نبيذ أحمر", "نبيذ أبيض",
+  // Turkish
+  "bira", "şarap", "rakı", "votka", "viski", "alkol", "alkollü",
+  "rom", "cin", "tekila", "konyak", "likör", "şampanya",
+  "alkollü içecek", "alkollü içki", "efes bira", "yeni rakı",
+  // Persian / Farsi
+  "آبجو", "شراب", "ویسکی", "ودکا", "عرق", "الکل",
+  "نوشیدنی الکلی", "مشروب الکلی",
+  // Malay / Indonesian
+  "bir", "arak", "tuak", "minuman beralkohol", "minuman keras",
+  "anggur", "wiski", "vodka", "rum", "brendi",
+  "alkohol", "beralkohol", "miras",
+  // Hindi
+  "शराब", "बीयर", "वाइन", "व्हिस्की", "रम", "वोदका",
+  "मदिरा", "दारू", "ताड़ी", "मादक पेय", "मद्य",
+  // Urdu
+  "شراب", "بیئر", "وائن", "وہسکی", "رم", "ووڈکا",
+  "نشہ آور مشروب", "الکحل",
+  // Bengali
+  "মদ", "বিয়ার", "ওয়াইন", "হুইস্কি", "রাম", "মাদক", "মদ্য",
+  // Chinese Simplified
+  "啤酒", "葡萄酒", "白酒", "红酒", "白兰地", "威士忌",
+  "伏特加", "朗姆酒", "龙舌兰", "香槟", "鸡尾酒",
+  "米酒", "黄酒", "烧酒", "清酒", "果酒", "梅酒",
+  "酒精", "含酒精", "酒精饮料", "酒类",
+  // Chinese Traditional
+  "紅酒", "白蘭地", "伏特加", "龍舌蘭", "雞尾酒",
+  "酒精飲料", "酒類",
+  // Japanese
+  "ビール", "ワイン", "ウイスキー", "ウォッカ", "ラム", "ジン",
+  "テキーラ", "ブランデー", "シャンパン", "カクテル",
+  "日本酒", "焼酎", "梅酒", "酎ハイ", "サワー",
+  "アルコール", "お酒", "酒類", "アルコール飲料",
+  // Korean
+  "맥주", "와인", "위스키", "보드카", "럼", "진", "데킬라",
+  "소주", "막걸리", "동동주", "알코올", "주류", "술",
+  // Thai
+  "เบียร์", "ไวน์", "วิสกี้", "วอดก้า", "รัม", "จิน", "เตกีลา",
+  "เหล้า", "สุรา", "แอลกอฮอล์", "เครื่องดื่มแอลกอฮอล์", "เมรัย",
+  // Vietnamese
+  "bia", "rượu", "rượu vang", "rượu whisky", "vodka", "rum",
+  "rượu mạnh", "bia hơi", "rượu đế", "đồ uống có cồn", "cồn",
+  // Swahili
+  "bia", "pombe", "divai", "wiski", "vodka", "kinywaji cha pombe", "kilevi",
+  // Filipino / Tagalog
+  "alak", "serbesa", "lambanog", "tuba", "basi", "tapuy",
+  "inuming may alkohol", "nakalalasing",
+  // Swedish
+  "öl", "vin", "vodka", "whisky", "rom", "brännvin", "snaps",
+  "glögg", "alkohol", "alkoholhaltig", "sprit",
+  // Norwegian
+  "øl", "vin", "vodka", "whisky", "rom", "akevitt", "brennevin",
+  "alkohol", "alkoholholdig",
+  // Danish
+  "øl", "vin", "vodka", "whisky", "rom", "akvavit", "brændevin",
+  "alkohol", "alkoholholdig",
+  // Finnish
+  "olut", "viini", "vodka", "viski", "rommi", "koskenkorva", "sahti",
+  "alkoholi", "alkoholijuoma",
+  // Croatian / Serbian / Bosnian
+  "pivo", "vino", "votka", "viski", "rum", "rakija",
+  "šljivovica", "loza", "alkohol", "alkoholno piće",
+  // Bulgarian
+  "бира", "вино", "водка", "уиски", "ром",
+  "ракия", "мастика", "алкохол", "алкохолна напитка",
+  // Ukrainian
+  "пиво", "вино", "горілка", "віскі", "ром",
+  "самогон", "алкоголь", "алкогольний напій",
+  // Hebrew
+  "בירה", "יין", "וויסקי", "וודקה", "רום", "ג'ין",
+  "אלכוהול", "משקה אלכוהולי", "ערק",
+  // Georgian
+  "ლუდი", "ღვინო", "არაყი", "ჭაჭა", "ალკოჰოლი",
+  // Azerbaijani
+  "pivə", "şərab", "araq", "viski", "spirtli içki", "alkohol",
+  // Kazakh
+  "сыра", "шарап", "арақ", "алкоголь", "спиртті ішімдік",
+  // Uzbek
+  "pivo", "vino", "aroq", "alkogol",
+  // Nepali
+  "रक्सी", "बियर", "वाइन", "व्हिस्की", "मद", "जाँड", "छ्याङ",
+  // Sinhala
+  "බීර", "වයින්", "අරක්කු", "මත්පැන්",
+  // Burmese / Myanmar
+  "ဘီယာ", "ဝိုင်", "အရက်", "အယ်လ်ကိုဟော",
+  // Khmer / Cambodian
+  "ស្រាបៀ", "ស្រា", "ស្រាទំពាំងបាយជូរ",
+  // Hausa
+  "giya", "ruwan inabi", "barasa",
+  // Amharic
+  "ቢራ", "ወይን", "ጠላ", "ተጅ", "አረቄ", "አልኮል",
+  // Somali
+  "biir", "khamri",
+  // Pashto
+  "شراب", "بیر", "الکول",
+  // Tamil
+  "மது", "பீர்", "ஒயின்", "மதுபானம்", "சாராயம்", "கள்",
+  // Telugu
+  "మద్యం", "బీర్", "వైన్", "సారా", "కల్లు",
+  // Kannada
+  "ಮದ್ಯ", "ಬೀರ್", "ವೈನ್", "ಸಾರಾಯಿ",
+  // Malayalam
+  "മദ്യം", "ബിയർ", "വൈൻ", "കള്ള്", "ചാരായം",
+  // Mongolian
+  "пиво", "дарс", "архи", "согтууруулах ундаа",
+  // Lao
+  "ເບຍ", "ເຫຼົ້າ", "ເຫຼົ້າແວງ",
+  // Turkmen
+  "piwo", "şerap", "arak", "alkogol",
+  // Kurdish
+  "bîra", "şerab", "arak", "alkol",
+  // Malagasy
+  "labiera", "divay", "toaka",
+  // OpenFoodFacts category tags
+  "beers", "wines", "spirits", "alcoholic beverages", "alcoholic drinks",
+  "hard liquors", "distilled beverages", "fermented beverages",
+  "craft beers", "lagers", "ales", "stouts", "porters",
+  "red wines", "white wines", "sparkling wines", "fortified wines",
+  "liqueurs", "cocktails",
 ];
 
 function isPorkRelated(text: string): boolean {
