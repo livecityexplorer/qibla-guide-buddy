@@ -283,17 +283,27 @@ function showAdhanNotification(settings: AdhanSettings): void {
 }
 
 function showPreReminderNotification(prayerName: string): void {
-  if (!isNotificationSupported() || Notification.permission !== "granted") return;
   const msg = PRE_REMINDER_MESSAGES[prayerName] || { title: `⏰ ${prayerName} in 10 minutes`, body: `Prepare for ${prayerName} prayer. 🤲` };
+
+  // Always show in-app toast so the user sees it even without notification permission
+  import("sonner").then(({ toast }) => {
+    toast(msg.title, {
+      description: msg.body,
+      duration: 15000,
+    });
+  }).catch(() => {});
+
+  // Also show native device notification with device alarm sound
+  if (!isNotificationSupported() || Notification.permission !== "granted") return;
 
   const options: any = {
     body: msg.body,
     icon: "/pwa-192x192.png",
     badge: "/pwa-192x192.png",
     tag: "pre-reminder-" + prayerName,
-    requireInteraction: false,
-    silent: false, // Uses device default notification sound
-    vibrate: [100, 50, 100],
+    requireInteraction: true,
+    silent: false, // Uses device default notification/alarm sound
+    vibrate: [200, 100, 200, 100, 200],
   };
 
   if ("serviceWorker" in navigator && navigator.serviceWorker.controller) {
