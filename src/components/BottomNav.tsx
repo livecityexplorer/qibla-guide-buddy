@@ -60,18 +60,18 @@ const BottomNav = () => {
       </AnimatePresence>
 
       <nav className="fixed bottom-0 left-0 right-0 z-50 border-t border-border/50 glass-card-strong">
-        <div className="mx-auto flex max-w-lg items-center justify-around px-2 py-1">
+        <div className="mx-auto flex max-w-lg items-center justify-around px-1 py-2">
           {tabs.map((tab) => {
             const isMore = tab.path === "more";
             const isActive = isMore ? isMoreActive : location.pathname === tab.path;
             const Icon = tab.icon;
             return (
-              <button key={tab.path} onClick={() => { if (isMore) { setShowMore(!showMore); } else { setShowMore(false); navigate(tab.path); } }} className="relative flex flex-col items-center gap-0.5 px-2 py-2 transition-colors">
+              <button key={tab.path} onClick={() => { if (isMore) { setShowMore(!showMore); } else { setShowMore(false); navigate(tab.path); } }} className="relative flex flex-col items-center gap-1 px-3 py-2.5 transition-colors min-w-[60px]">
                 {isActive && !isMore && (
-                  <motion.div layoutId="activeTab" className="absolute -top-1 left-1/2 h-0.5 w-8 -translate-x-1/2 rounded-full gradient-gold" transition={{ type: "spring", stiffness: 400, damping: 30 }} />
+                  <motion.div layoutId="activeTab" className="absolute -top-1 left-1/2 h-0.5 w-10 -translate-x-1/2 rounded-full gradient-gold" transition={{ type: "spring", stiffness: 400, damping: 30 }} />
                 )}
-                <Icon size={20} className={isActive || (isMore && showMore) ? "text-primary" : "text-muted-foreground"} />
-                <span className={`text-[10px] font-medium ${isActive || (isMore && showMore) ? "text-primary" : "text-muted-foreground"}`}>{tab.label}</span>
+                <Icon size={26} className={isActive || (isMore && showMore) ? "text-primary" : "text-muted-foreground"} />
+                <span className={`text-[11px] font-semibold ${isActive || (isMore && showMore) ? "text-primary" : "text-muted-foreground"}`}>{tab.label}</span>
               </button>
             );
           })}
