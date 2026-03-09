@@ -36,7 +36,7 @@ const PrayerTimesPage = () => {
   const navigate = useNavigate();
   const { t } = useTranslation();
   const [showSettings, setShowSettings] = useState(false);
-  const { settings, notificationGranted, isPlaying, updateSettings, setPrayerEnabled, togglePrayer, enableAdhan, disableAdhan, testAdhan, stopPlayback } = useAdhan();
+  const { settings, notificationGranted, isPlaying, updateSettings, setPrayerEnabled, enableAdhan, disableAdhan, testAdhan, stopPlayback } = useAdhan();
 
   return (
     <div className="min-h-screen">
