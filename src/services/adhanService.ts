@@ -52,27 +52,27 @@ const PRAYER_SCHEDULE: Record<string, string> = {
 const PRE_REMINDER_MESSAGES: Record<string, { title: string; body: string }> = {
   Fajr: {
     title: "🌙 Fajr in 10 minutes",
-    body: "The dawn is approaching. Prepare your heart for the most blessed prayer. \"Prayer is better than sleep.\" 🤲",
+    body: "The dawn is near. \"Prayer is better than sleep.\" Prepare your heart for the most blessed prayer of the day. 🤲",
   },
   Sunrise: {
     title: "🌅 Sunrise in 10 minutes",
-    body: "The sun is about to rise. A beautiful new day awaits you. 🌄",
+    body: "The sun is about to rise. A beautiful new day awaits — start it with gratitude and dhikr. 🌄",
   },
   Dhuhr: {
     title: "☀️ Dhuhr in 10 minutes",
-    body: "Midday prayer approaches. Take a moment to pause and connect with Allah. \"Verily, in the remembrance of Allah do hearts find rest.\" 🕌",
+    body: "Midday prayer is near. Pause your day, make wudu, and prepare to stand before your Lord. \"In the remembrance of Allah do hearts find rest.\" 🕌",
   },
   Asr: {
     title: "🌤 Asr in 10 minutes",
-    body: "The afternoon prayer is near. The Prophet ﷺ said: \"Whoever misses Asr prayer, it is as if they lost their family and wealth.\" 🤲",
+    body: "Asr is approaching. The Prophet ﷺ warned: \"Whoever misses Asr, it is as if they lost family and wealth.\" Don't miss it! 🤲",
   },
   Maghrib: {
     title: "🌅 Maghrib in 10 minutes",
-    body: "The sun is setting. Prepare for Maghrib prayer. May Allah fill your evening with barakah and peace. ✨",
+    body: "The sun is setting soon. Prepare for Maghrib — may Allah fill your evening with barakah, peace, and light. ✨",
   },
   Isha: {
     title: "🌙 Isha in 10 minutes",
-    body: "The night prayer approaches. End your day in the remembrance of Allah. \"And during the night, prostrate to Him and glorify Him.\" 🌟",
+    body: "The night prayer is near. \"And during the night, prostrate to Him and glorify Him a long part of the night.\" End your day beautifully. 🌟",
   },
 };
 
@@ -283,17 +283,27 @@ function showAdhanNotification(settings: AdhanSettings): void {
 }
 
 function showPreReminderNotification(prayerName: string): void {
-  if (!isNotificationSupported() || Notification.permission !== "granted") return;
   const msg = PRE_REMINDER_MESSAGES[prayerName] || { title: `⏰ ${prayerName} in 10 minutes`, body: `Prepare for ${prayerName} prayer. 🤲` };
+
+  // Always show in-app toast so the user sees it even without notification permission
+  import("sonner").then(({ toast }) => {
+    toast(msg.title, {
+      description: msg.body,
+      duration: 15000,
+    });
+  }).catch(() => {});
+
+  // Also show native device notification with device alarm sound
+  if (!isNotificationSupported() || Notification.permission !== "granted") return;
 
   const options: any = {
     body: msg.body,
     icon: "/pwa-192x192.png",
     badge: "/pwa-192x192.png",
     tag: "pre-reminder-" + prayerName,
-    requireInteraction: false,
-    silent: false, // Uses device default notification sound
-    vibrate: [100, 50, 100],
+    requireInteraction: true,
+    silent: false, // Uses device default notification/alarm sound
+    vibrate: [200, 100, 200, 100, 200],
   };
 
   if ("serviceWorker" in navigator && navigator.serviceWorker.controller) {
@@ -391,6 +401,11 @@ export function scheduleAdhan(settings: AdhanSettings): void {
       if (preMs <= 0) preMs += 86400000;
 
       const preTimerId = window.setTimeout(() => {
+        // Re-check latest settings before showing reminder
+        const latest = getAdhanSettings();
+        if (!latest.enabled) return;
+        if (!latest.preReminder) return;
+        if (!latest.prayers[prayerName as keyof AdhanSettings["prayers"]]) return;
         showPreReminderNotification(prayerName);
       }, preMs);
       scheduledTimers.push(preTimerId);
