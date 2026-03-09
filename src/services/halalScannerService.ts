@@ -1,4 +1,4 @@
-import { ingredientDatabase, findIngredient, analyzeIngredientList, getOverallStatus, type HalalStatus, HARAM_PORK_KEYWORDS } from "@/data/ingredientDatabase";
+import { ingredientDatabase, findIngredient, analyzeIngredientList, getOverallStatus, type HalalStatus, HARAM_PORK_KEYWORDS, HARAM_ALCOHOL_KEYWORDS } from "@/data/ingredientDatabase";
 
 export interface ProductResult {
   id: string;
@@ -72,6 +72,20 @@ function detectPorkFromMetadata(name: string, categories: string[]): string[] {
   return detected;
 }
 
+// Check product name and categories for alcohol indicators
+function detectAlcoholFromMetadata(name: string, categories: string[]): boolean {
+  const combined = `${name} ${categories.join(" ")}`.toLowerCase();
+  for (const kw of HARAM_ALCOHOL_KEYWORDS) {
+    const kwLower = kw.toLowerCase();
+    // Word boundary check to avoid false positives (e.g. "ginger" matching "gin")
+    const regex = new RegExp(`\\b${kwLower.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`, 'i');
+    if (regex.test(combined)) {
+      return true;
+    }
+  }
+  return false;
+}
+
 export async function searchByBarcode(barcode: string): Promise<ProductResult | null> {
   // Try Open Food Facts first, then Open Beauty Facts
   const result = await _searchBarcodeFromAPI(OFF_API, barcode, "openfoodfacts");
@@ -98,8 +112,18 @@ async function _searchBarcodeFromAPI(apiBase: string, barcode: string, source: "
     }
     
     const analysis = analyzeIngredientList(allIngredients);
-    const status = getOverallStatus(analysis);
+    let status = getOverallStatus(analysis);
     const productType = source === "openbeautyfacts" ? "cosmetic" as const : detectProductType(categories, p.product_name || "");
+
+    // Override: detect alcoholic products from name/categories
+    const isAlcohol = detectAlcoholFromMetadata(p.product_name || "", categories);
+    if (isAlcohol) {
+      status = "haram";
+    }
+
+    const summary = isAlcohol
+      ? `This is an alcoholic product. Alcohol (khamr) is clearly Haram in Islam. Not suitable for Muslim consumption.`
+      : generateSummary(analysis, status, productType);
 
     return {
       id: p.code || barcode,
@@ -111,8 +135,8 @@ async function _searchBarcodeFromAPI(apiBase: string, barcode: string, source: "
       ingredients: allIngredients,
       ingredientsText,
       status,
-      summary: generateSummary(analysis, status, productType),
-      confidence: ingredients.length > 3 ? "analysis-based" : "low",
+      summary,
+      confidence: isAlcohol ? "high" : (ingredients.length > 3 ? "analysis-based" : "low"),
       analysis,
       source,
       productType,
@@ -164,8 +188,16 @@ async function _searchNameFromAPI(apiBase: string, query: string, page: number, 
         }
         
         const analysis = analyzeIngredientList(allIngredients);
-        const status = getOverallStatus(analysis);
+        let status = getOverallStatus(analysis);
         const productType = source === "openbeautyfacts" ? "cosmetic" as const : detectProductType(categories, p.product_name || "");
+        
+        const isAlcohol = detectAlcoholFromMetadata(p.product_name || "", categories);
+        if (isAlcohol) status = "haram";
+        
+        const summary = isAlcohol
+          ? `This is an alcoholic product. Alcohol (khamr) is clearly Haram in Islam. Not suitable for Muslim consumption.`
+          : generateSummary(analysis, status, productType);
+        
         return {
           id: p.code,
           barcode: p.code,
@@ -176,8 +208,8 @@ async function _searchNameFromAPI(apiBase: string, query: string, page: number, 
           ingredients: allIngredients,
           ingredientsText,
           status,
-          summary: generateSummary(analysis, status, productType),
-          confidence: ingredients.length > 3 ? "analysis-based" : "low",
+          summary,
+          confidence: isAlcohol ? "high" : (ingredients.length > 3 ? "analysis-based" : "low"),
           analysis,
           source,
           productType,

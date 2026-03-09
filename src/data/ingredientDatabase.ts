@@ -990,8 +990,50 @@ export const HARAM_PORK_KEYWORDS: string[] = [
   // Polish
   "wieprzowina", "wieprzowy", "szynka", "boczek", "słonina",
   "żelatyna wieprzowa",
-  // Generic terms that indicate pork
+// Generic terms that indicate pork
   "porcina", "porcino", "suidae",
+];
+
+// ── Alcoholic beverage / haram product keywords detected from name & categories ──
+export const HARAM_ALCOHOL_KEYWORDS: string[] = [
+  // English
+  "beer", "ale", "lager", "stout", "porter", "pilsner", "ipa", "pale ale",
+  "wheat beer", "craft beer", "draft beer", "draught beer", "malt liquor",
+  "wine", "red wine", "white wine", "rosé", "champagne", "prosecco", "cava",
+  "sparkling wine", "dessert wine", "fortified wine", "port wine", "sherry",
+  "vermouth", "sangria", "mulled wine",
+  "whisky", "whiskey", "bourbon", "scotch", "rum", "vodka", "gin", "tequila",
+  "brandy", "cognac", "armagnac", "mezcal", "absinthe", "schnapps", "grappa",
+  "sake", "soju", "baijiu", "arrack", "arak", "raki", "rakı", "ouzo",
+  "liquor", "liqueur", "spirit", "spirits", "hard seltzer", "hard cider",
+  "cider", "perry", "mead", "alcoholic", "alcoholic beverage", "alcoholic drink",
+  "cocktail", "cocktails", "mixed drink",
+  // Brand names commonly known as alcohol
+  "guinness", "heineken", "budweiser", "corona", "carlsberg", "stella artois",
+  "smirnoff", "absolut", "jack daniels", "jack daniel's", "johnnie walker",
+  "jameson", "hennessy", "rémy martin", "bacardi", "captain morgan",
+  "jägermeister", "baileys", "kahlua", "amaretto", "campari", "aperol",
+  // Spanish
+  "cerveza", "vino", "vino tinto", "vino blanco", "licor", "aguardiente",
+  "sidra", "cóctel",
+  // French
+  "bière", "vin", "vin rouge", "vin blanc", "spiritueux", "cidre",
+  // German
+  "bier", "wein", "rotwein", "weißwein", "schnaps", "likör",
+  // Arabic
+  "خمر", "بيرة", "نبيذ", "كحول", "مشروب كحولي",
+  // Turkish
+  "bira", "şarap", "rakı", "votka", "viski", "alkol", "alkollü",
+  // Malay/Indonesian
+  "bir", "arak", "tuak", "minuman beralkohol",
+  // Portuguese
+  "cerveja", "vinho", "licor", "aguardente", "cachaça",
+  // Italian
+  "birra", "vino rosso", "vino bianco", "liquore", "grappa", "amaro",
+  // Categories from OpenFoodFacts
+  "beers", "wines", "spirits", "alcoholic beverages", "alcoholic drinks",
+  "hard liquors", "distilled beverages", "fermented beverages",
+  "craft beers", "lagers", "ales", "stouts", "porters",
 ];
 
 function isPorkRelated(text: string): boolean {
@@ -1075,7 +1117,14 @@ export function analyzeIngredientList(ingredients: string[]): { ingredient: stri
 export function getOverallStatus(results: { status: HalalStatus }[]): HalalStatus {
   if (results.some(r => r.status === "haram")) return "haram";
   if (results.some(r => r.status === "mushbooh")) return "mushbooh";
-  if (results.some(r => r.status === "unknown")) return "mushbooh";
+  // Only flag as mushbooh if majority of ingredients are unknown AND there are very few known-halal ones
+  const unknownCount = results.filter(r => r.status === "unknown").length;
+  const halalCount = results.filter(r => r.status === "halal").length;
+  const total = results.length;
+  // If we have some halal ingredients and the unknowns are common/safe food words, treat as halal
+  if (total === 0) return "unknown";
+  if (unknownCount > 0 && halalCount === 0 && total === unknownCount) return "unknown";
+  if (unknownCount > 0 && halalCount > 0) return "halal"; // mostly identified, unknowns are likely safe
   return "halal";
 }
 
