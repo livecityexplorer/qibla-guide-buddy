@@ -50,18 +50,32 @@ const LiveBarcodeScanner = ({
     controlsRef.current = null;
 
     try {
+      readerRef.current?.reset?.();
+    } catch {}
+
+    try {
       streamRef.current?.getTracks().forEach((t) => t.stop());
     } catch {}
     streamRef.current = null;
 
     try {
       if (videoRef.current) {
+        videoRef.current.pause?.();
         videoRef.current.srcObject = null;
       }
     } catch {}
 
     setIsActive(false);
     setTorchOn(false);
+  }, []);
+
+  const waitForVideoElement = useCallback(async () => {
+    for (let i = 0; i < 12; i++) {
+      const el = videoRef.current;
+      if (el) return el;
+      await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
+    }
+    return null;
   }, []);
 
   useEffect(() => {
@@ -82,9 +96,23 @@ const LiveBarcodeScanner = ({
         throw new Error("Camera API not available. Please use HTTPS or a supported browser.");
       }
 
-      console.log("[LiveBarcodeScanner] start clicked");
+      // Render scanner shell first so <video> definitely exists.
+      setIsActive(true);
 
-      // IMPORTANT: call getUserMedia immediately from the click handler
+      // Stop prior scanner session before creating a new one.
+      try {
+        controlsRef.current?.stop?.();
+      } catch {}
+      controlsRef.current = null;
+      try {
+        readerRef.current?.reset?.();
+      } catch {}
+      try {
+        streamRef.current?.getTracks().forEach((t) => t.stop());
+      } catch {}
+      streamRef.current = null;
+
+      // CRITICAL: first awaited call remains getUserMedia from click handler.
       let stream: MediaStream;
       try {
         stream = await navigator.mediaDevices.getUserMedia({
@@ -95,62 +123,51 @@ const LiveBarcodeScanner = ({
           },
           audio: false,
         });
-      } catch (e: any) {
-        // If camera is busy, stop any previous session then retry once.
-        if (e?.name === "NotReadableError") {
-          stop();
-          stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
-        } else {
-          throw e;
-        }
+      } catch {
+        stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
       }
 
-      // Now that we have a fresh stream, stop any previous decoding and attach new stream.
-      stop();
       streamRef.current = stream;
 
-      // Ensure scanner view (and <video ref>) is mounted before attaching the stream.
-      setIsActive(true);
-      await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
-
-      const videoEl = videoRef.current;
+      const videoEl = await waitForVideoElement();
       if (!videoEl) throw new Error("Video element not ready yet. Please try again.");
 
       videoEl.srcObject = stream;
       videoEl.playsInline = true;
       videoEl.muted = true;
+      videoEl.autoplay = true;
+      videoEl.setAttribute("playsinline", "true");
+      videoEl.setAttribute("webkit-playsinline", "true");
 
       try {
         await videoEl.play();
       } catch {}
 
-      if (!readerRef.current) {
-        const hints = new Map();
-        hints.set(2 /* DecodeHintType.TRY_HARDER */, true);
-        readerRef.current = new BrowserMultiFormatReader(hints, { delayBetweenScanAttempts: 150 });
-      }
+      const hints = new Map();
+      hints.set(2 /* DecodeHintType.TRY_HARDER */, true);
+      readerRef.current = new BrowserMultiFormatReader(hints, {
+        delayBetweenScanAttempts: 120,
+        delayBetweenScanSuccess: 400,
+      });
 
       const controls = await readerRef.current.decodeFromStream(stream, videoEl, (result, _error, controls) => {
-        if (result) {
-          const text = (result as any).getText?.() ?? (result as any).text;
-          if (typeof text === "string" && text.trim()) {
-            console.log("[LiveBarcodeScanner] detected", text);
-            controls?.stop?.();
-            stop();
-            onDetected(text);
-          }
+        if (!result) return;
+        const text = (result as any).getText?.() ?? (result as any).text;
+        if (typeof text === "string" && text.trim()) {
+          controls?.stop?.();
+          stop();
+          onDetected(text);
         }
       });
 
       controlsRef.current = controls as any;
     } catch (err: any) {
-      console.error("[LiveBarcodeScanner] camera error", err);
       stop();
       setCameraError(normalizeErrorMessage(err));
     } finally {
       setIsStarting(false);
     }
-  }, [isStarting, onDetected, stop]);
+  }, [isStarting, onDetected, stop, waitForVideoElement]);
 
   const toggleTorch = useCallback(async () => {
     try {
