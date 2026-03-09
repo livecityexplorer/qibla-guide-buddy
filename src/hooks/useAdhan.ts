@@ -9,6 +9,7 @@ import {
   playAdhan,
   stopAdhan,
   getAdhanAudio,
+  unlockAdhanAudio,
   scheduleAdhan,
 } from "@/services/adhanService";
 
@@ -78,6 +79,9 @@ export function useAdhan() {
   }, []);
 
   const enableAdhan = useCallback(async () => {
+    // Prime/unlock audio playback early (within the user gesture) so scheduled Adhan can play later.
+    unlockAdhanAudio(getAdhanSettings());
+
     const { granted, reason } = await requestNotificationPermission();
     setNotificationGranted(granted);
 
@@ -90,7 +94,9 @@ export function useAdhan() {
       // Still enable adhan for audio playback even without notification permission
       updateSettings({ enabled: true });
       toast.warning("Adhan enabled (audio only)", {
-        description: reason || "Notifications couldn't be enabled. Adhan audio will still play when the app is open.",
+        description:
+          reason ||
+          "Notifications couldn't be enabled. Adhan audio will still play when the app is open.",
         duration: 6000,
       });
     }
