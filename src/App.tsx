@@ -80,6 +80,7 @@ const App = () => {
       </QuranPlayerProvider>
     </TooltipProvider>
   </QueryClientProvider>
-);
+  );
+};
 
 export default App;
