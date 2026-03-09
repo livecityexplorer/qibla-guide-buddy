@@ -129,7 +129,18 @@ const HomePage = () => {
             `https://geocoding-api.open-meteo.com/v1/reverse?latitude=${latitude}&longitude=${longitude}&count=1`
           );
           const nameData = await nameRes.json();
-          setLocation(nameData.results?.[0] ? `${nameData.results[0].name}, ${nameData.results[0].country}` : t("common.yourLocation"));
+          const r = nameData.results?.[0];
+          if (r) {
+            // Build a meaningful location: city/district + admin area or country
+            const city = r.name || "";
+            const admin = r.admin1 || "";
+            const country = r.country || "";
+            // Show "City, Region" or "City, Country" — avoid repeating if city === admin
+            const secondary = admin && admin !== city ? admin : country;
+            setLocation(secondary ? `${city}, ${secondary}` : city || t("common.yourLocation"));
+          } else {
+            setLocation(t("common.yourLocation"));
+          }
           setLocationError(false);
         } catch {
           setLocation(t("common.yourLocation"));
