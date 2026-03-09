@@ -87,10 +87,15 @@ const PrayerTimesPage = () => {
                 <label className="text-xs font-medium text-muted-foreground mb-2 block">{t("prayer.enableForEach")}</label>
                 <div className="grid grid-cols-2 gap-2">
                   {PRAYER_TIMES.map((p) => { const key = prayerSettingsKey(p.nameKey); return key ? (
-                    <div key={p.nameKey} className="flex items-center justify-between rounded-lg bg-secondary/50 px-3 py-2">
+                    <button
+                      key={p.nameKey}
+                      type="button"
+                      onClick={() => togglePrayer(key)}
+                      className="flex items-center justify-between rounded-lg bg-secondary/50 px-3 py-2.5 cursor-pointer active:bg-secondary/80 transition-colors"
+                    >
                       <span className="text-xs font-medium text-foreground">{t(p.nameKey)}</span>
-                      <Switch checked={settings.prayers[key] ?? false} onCheckedChange={() => togglePrayer(key)} className="scale-75" />
-                    </div>
+                      <Switch checked={settings.prayers[key] ?? false} onCheckedChange={() => togglePrayer(key)} />
+                    </button>
                   ) : null; })}
                 </div>
               </div>
