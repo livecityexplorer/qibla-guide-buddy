@@ -135,6 +135,40 @@ export function getAdhanAudio(): HTMLAudioElement {
   return audioElement;
 }
 
+/**
+ * Browsers (especially iOS/Safari) often block scheduled audio unless the user has
+ * interacted with the page at least once; calling this during a user gesture
+ * primes/unlocks playback so Adhan can play later at prayer times.
+ */
+export function unlockAdhanAudio(settings: AdhanSettings): void {
+  const option = ADHAN_OPTIONS.find((o) => o.id === settings.selectedAdhan) || ADHAN_OPTIONS[0];
+  const audio = getAdhanAudio();
+
+  // Use muted/near-silent playback for a split second to "unlock" audio.
+  const prevVolume = audio.volume;
+  const prevSrc = audio.src;
+
+  audio.src = option.file;
+  audio.volume = 0;
+  audio.loop = false;
+
+  try {
+    const p = audio.play();
+    if (p) {
+      p.then(() => {
+        audio.pause();
+        audio.currentTime = 0;
+        audio.volume = prevVolume || settings.volume;
+        audio.src = prevSrc || audio.src;
+      }).catch(() => {
+        // ignore – some environments still block until a stronger gesture
+      });
+    }
+  } catch {
+    // ignore
+  }
+}
+
 export function playAdhan(settings: AdhanSettings): void {
   const option = ADHAN_OPTIONS.find((o) => o.id === settings.selectedAdhan) || ADHAN_OPTIONS[0];
   const audio = getAdhanAudio();

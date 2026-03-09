@@ -9,6 +9,7 @@ import {
   playAdhan,
   stopAdhan,
   getAdhanAudio,
+  unlockAdhanAudio,
   scheduleAdhan,
 } from "@/services/adhanService";
 
