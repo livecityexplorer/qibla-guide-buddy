@@ -173,9 +173,29 @@ const QuranPage = () => {
     [arabicData],
   );
 
+  const pendingScrollRef = useRef<number | null>(null);
+
   const handleResumeBookmark = () => {
-    if (bookmark) setSelectedSurah(bookmark.surahNumber);
+    if (bookmark) {
+      pendingScrollRef.current = bookmark.ayahIndex;
+      setSelectedSurah(bookmark.surahNumber);
+    }
   };
+
+  // Auto-scroll to bookmarked ayah after surah loads
+  useEffect(() => {
+    if (!loading && arabicData && pendingScrollRef.current !== null) {
+      const idx = pendingScrollRef.current;
+      pendingScrollRef.current = null;
+      // Wait for DOM to render ayahs
+      requestAnimationFrame(() => {
+        setTimeout(() => {
+          const el = ayahRefs.current.get(idx);
+          if (el) el.scrollIntoView({ behavior: "smooth", block: "center" });
+        }, 300);
+      });
+    }
+  }, [loading, arabicData]);
 
   const adjustSize = (type: "arabic" | "trans", delta: number) => {
     if (type === "arabic") {
