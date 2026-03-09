@@ -191,6 +191,17 @@ const PrayerTimesPage = () => {
       <div className={`px-4 ${showSettings ? "mt-3" : "-mt-4"} space-y-3 pb-6`}>
         {PRAYER_TIMES.map((prayer, i) => {
           const key = prayerSettingsKey(prayer.nameKey);
+          const checked = key ? (settings.prayers[key] ?? false) : false;
+
+          const toggleFromRow = async () => {
+            if (!key) return;
+            // If the global Adhan toggle is off, enable it first so per-prayer toggles actually take effect.
+            if (!settings.enabled) {
+              await enableAdhan();
+            }
+            setPrayerEnabled(key, !checked);
+          };
+
           return (
             <motion.div
               key={prayer.nameKey}
@@ -207,8 +218,23 @@ const PrayerTimesPage = () => {
                 </div>
               </div>
               <div className="flex items-center gap-3">
-                {key && settings.enabled && settings.prayers[key] ? (
-                  <Bell size={14} className="text-primary" />
+                {key ? (
+                  <button
+                    type="button"
+                    onClick={toggleFromRow}
+                    className="inline-flex h-9 w-9 items-center justify-center rounded-full bg-secondary/40 text-foreground transition focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                    aria-label={
+                      checked
+                        ? `${t(prayer.nameKey)} ${t("common.stop")}`
+                        : `${t(prayer.nameKey)} ${t("common.testAdhan")}`
+                    }
+                  >
+                    {settings.enabled && checked ? (
+                      <Bell size={14} className="text-primary" />
+                    ) : (
+                      <BellOff size={14} className="text-muted-foreground/60" />
+                    )}
+                  </button>
                 ) : (
                   <BellOff size={14} className="text-muted-foreground/40" />
                 )}
