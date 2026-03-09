@@ -98,10 +98,11 @@ const QiblaPage = () => {
         }
       } else {
         // Try absolute orientation first (better accuracy on Android)
-        if ("ondeviceorientationabsolute" in window) {
-          (window as any).addEventListener("deviceorientationabsolute", handleOrientation, true);
+        const w = window as any;
+        if (w.ondeviceorientationabsolute !== undefined) {
+          w.addEventListener("deviceorientationabsolute", handleOrientation, true);
         } else {
-          window.addEventListener("deviceorientation", handleOrientation, true);
+          w.addEventListener("deviceorientation", handleOrientation, true);
         }
       }
       setPermissionState("granted");
