@@ -183,6 +183,15 @@ const PrayerTimesPage = () => {
                   <p className="text-xs text-muted-foreground mt-1">{t("prayer.notificationsNote")}</p>
                 </div>
               )}
+
+              {settings.enabled && (
+                <div className="mt-3 rounded-lg bg-muted/50 border border-border p-3">
+                  <p className="text-xs text-foreground font-medium">📱 {t("prayer.keepAppOpen", "Keep app open for audio")}</p>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    {t("prayer.backgroundLimitation", "Adhan audio plays when the app is open. For locked-screen reminders, set your phone's alarm app as backup.")}
+                  </p>
+                </div>
+              )}
             </>
           )}
         </motion.div>
