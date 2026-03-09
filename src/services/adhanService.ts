@@ -401,6 +401,11 @@ export function scheduleAdhan(settings: AdhanSettings): void {
       if (preMs <= 0) preMs += 86400000;
 
       const preTimerId = window.setTimeout(() => {
+        // Re-check latest settings before showing reminder
+        const latest = getAdhanSettings();
+        if (!latest.enabled) return;
+        if (!latest.preReminder) return;
+        if (!latest.prayers[prayerName as keyof AdhanSettings["prayers"]]) return;
         showPreReminderNotification(prayerName);
       }, preMs);
       scheduledTimers.push(preTimerId);
