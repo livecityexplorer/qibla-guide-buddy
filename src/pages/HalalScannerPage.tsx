@@ -525,12 +525,10 @@ const BarcodeScanner = ({ onDetected, onManualEntry }: { onDetected: (code: stri
 
     startScanner();
 
+    // Only stop() — never call clear() as it deletes DOM nodes React manages, causing black screen
     return () => {
       mounted = false;
-      if (html5QrCodeRef.current) {
-        html5QrCodeRef.current.stop().catch(() => {});
-        html5QrCodeRef.current.clear().catch(() => {});
-      }
+      html5QrCodeRef.current?.stop().catch(() => {});
     };
   }, [onDetected]);
 
