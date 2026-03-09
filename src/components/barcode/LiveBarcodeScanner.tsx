@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { motion } from "framer-motion";
 import { Camera, Keyboard, Flashlight, FlashlightOff, Loader2 } from "lucide-react";
-import { BrowserMultiFormatReader } from "@zxing/browser";
 
 type LiveBarcodeScannerProps = {
   onDetected: (code: string) => void;
@@ -10,6 +9,19 @@ type LiveBarcodeScannerProps = {
   readyTitle?: string;
   readySubtitle?: string;
   startButtonClassName?: string;
+};
+
+type Html5Scanner = {
+  start: (
+    cameraIdOrConfig: string | { facingMode: string },
+    configuration: Record<string, unknown>,
+    onSuccess: (decodedText: string) => void,
+    onError?: (errorMessage: string) => void,
+  ) => Promise<void>;
+  stop: () => Promise<void>;
+  clear: () => Promise<void>;
+  applyVideoConstraints?: (constraints: MediaTrackConstraints) => Promise<void>;
+  getRunningTrackCapabilities?: () => MediaTrackCapabilities | Record<string, unknown>;
 };
 
 function normalizeErrorMessage(err: any): string {
@@ -33,51 +45,40 @@ const LiveBarcodeScanner = ({
   readySubtitle = "Tap “Start Scanner” to open your camera.",
   startButtonClassName = "gradient-emerald shadow-emerald",
 }: LiveBarcodeScannerProps) => {
-  const videoRef = useRef<HTMLVideoElement>(null);
-  const streamRef = useRef<MediaStream | null>(null);
-  const controlsRef = useRef<{ stop: () => void; switchTorch?: () => Promise<void> } | null>(null);
-  const readerRef = useRef<BrowserMultiFormatReader | null>(null);
+  const scannerRef = useRef<Html5Scanner | null>(null);
+  const scannerRegionIdRef = useRef(`barcode-scanner-${Math.random().toString(36).slice(2, 10)}`);
 
   const [cameraError, setCameraError] = useState("");
   const [isStarting, setIsStarting] = useState(false);
   const [isActive, setIsActive] = useState(false);
   const [torchOn, setTorchOn] = useState(false);
+  const [torchSupported, setTorchSupported] = useState(false);
 
-  const stop = useCallback(() => {
-    try {
-      controlsRef.current?.stop?.();
-    } catch {}
-    controlsRef.current = null;
+  const stop = useCallback(async () => {
+    const scanner = scannerRef.current;
+    scannerRef.current = null;
 
-    try {
-      streamRef.current?.getTracks().forEach((t) => t.stop());
-    } catch {}
-    streamRef.current = null;
-
-    try {
-      if (videoRef.current) {
-        videoRef.current.pause?.();
-        videoRef.current.srcObject = null;
-      }
-    } catch {}
+    if (scanner) {
+      try {
+        await scanner.stop();
+      } catch {}
+      try {
+        await scanner.clear();
+      } catch {}
+    }
 
     setIsActive(false);
     setTorchOn(false);
+    setTorchSupported(false);
   }, []);
 
-  const waitForVideoElement = useCallback(async () => {
-    for (let i = 0; i < 12; i++) {
-      const el = videoRef.current;
-      if (el) return el;
-      await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
-    }
-    return null;
-  }, []);
+  const handleManualEntry = useCallback(() => {
+    void stop().finally(() => onManualEntry());
+  }, [stop, onManualEntry]);
 
   useEffect(() => {
     return () => {
-      stop();
-      readerRef.current = null;
+      void stop();
     };
   }, [stop]);
 
@@ -92,23 +93,13 @@ const LiveBarcodeScanner = ({
         throw new Error("Camera API not available. Please use HTTPS or a supported browser.");
       }
 
-      // Render scanner shell first so <video> definitely exists.
+      // Render scanner shell first so container exists.
       setIsActive(true);
 
-      // Stop prior scanner session before creating a new one.
+      // CRITICAL: first await stays on getUserMedia (direct user gesture chain).
+      let warmupStream: MediaStream;
       try {
-        controlsRef.current?.stop?.();
-      } catch {}
-      controlsRef.current = null;
-      try {
-        streamRef.current?.getTracks().forEach((t) => t.stop());
-      } catch {}
-      streamRef.current = null;
-
-      // CRITICAL: first awaited call remains getUserMedia from click handler.
-      let stream: MediaStream;
-      try {
-        stream = await navigator.mediaDevices.getUserMedia({
+        warmupStream = await navigator.mediaDevices.getUserMedia({
           video: {
             facingMode: { ideal: "environment" },
             width: { ideal: 1280 },
@@ -117,58 +108,70 @@ const LiveBarcodeScanner = ({
           audio: false,
         });
       } catch {
-        stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
+        warmupStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
+      }
+      warmupStream.getTracks().forEach((track) => track.stop());
+
+      await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
+
+      const scannerRegion = document.getElementById(scannerRegionIdRef.current);
+      if (!scannerRegion) {
+        throw new Error("Scanner container not ready. Please try again.");
       }
 
-      streamRef.current = stream;
+      const html5 = await import("html5-qrcode");
+      const Html5QrcodeCtor = (html5 as any).Html5Qrcode;
+      const scanner = new Html5QrcodeCtor(scannerRegionIdRef.current, { verbose: false }) as Html5Scanner;
+      scannerRef.current = scanner;
 
-      const videoEl = await waitForVideoElement();
-      if (!videoEl) throw new Error("Video element not ready yet. Please try again.");
+      const onScanSuccess = (decodedText: string) => {
+        if (!decodedText?.trim()) return;
+        void stop().then(() => onDetected(decodedText.trim()));
+      };
 
-      videoEl.srcObject = stream;
-      videoEl.playsInline = true;
-      videoEl.muted = true;
-      videoEl.autoplay = true;
-      videoEl.setAttribute("playsinline", "true");
-      videoEl.setAttribute("webkit-playsinline", "true");
+      const scanConfig = {
+        fps: 12,
+        qrbox: { width: 280, height: 120 },
+        aspectRatio: 1.777778,
+        disableFlip: false,
+        rememberLastUsedCamera: true,
+      };
 
       try {
-        await videoEl.play();
-      } catch {}
+        await scanner.start({ facingMode: "environment" }, scanConfig, onScanSuccess, () => {});
+      } catch (primaryError) {
+        const getCameras = (html5 as any).Html5Qrcode?.getCameras;
+        if (typeof getCameras !== "function") throw primaryError;
 
-      const hints = new Map();
-      hints.set(2 /* DecodeHintType.TRY_HARDER */, true);
-      readerRef.current = new BrowserMultiFormatReader(hints, {
-        delayBetweenScanAttempts: 120,
-        delayBetweenScanSuccess: 400,
-      });
+        const cameras = await getCameras();
+        const preferred = cameras.find((c: any) => /back|rear|environment/i.test(String(c?.label || ""))) || cameras[0];
+        if (!preferred?.id) throw primaryError;
 
-      const controls = await readerRef.current.decodeFromStream(stream, videoEl, (result, _error, controls) => {
-        if (!result) return;
-        const text = (result as any).getText?.() ?? (result as any).text;
-        if (typeof text === "string" && text.trim()) {
-          controls?.stop?.();
-          stop();
-          onDetected(text);
-        }
-      });
+        await scanner.start(preferred.id, scanConfig, onScanSuccess, () => {});
+      }
 
-      controlsRef.current = controls as any;
+      const caps = scanner.getRunningTrackCapabilities?.() as any;
+      setTorchSupported(Boolean(caps?.torch));
     } catch (err: any) {
-      stop();
+      await stop();
       setCameraError(normalizeErrorMessage(err));
     } finally {
       setIsStarting(false);
     }
-  }, [isStarting, onDetected, stop, waitForVideoElement]);
+  }, [isStarting, onDetected, stop]);
 
   const toggleTorch = useCallback(async () => {
     try {
-      if (!controlsRef.current?.switchTorch) return;
-      await controlsRef.current.switchTorch();
-      setTorchOn((v) => !v);
+      const scanner = scannerRef.current;
+      if (!scanner?.applyVideoConstraints) return;
+      const next = !torchOn;
+      await scanner.applyVideoConstraints({
+        torch: next,
+        advanced: [{ torch: next }],
+      } as any);
+      setTorchOn(next);
     } catch {}
-  }, []);
+  }, [torchOn]);
 
   if (cameraError) {
     return (
@@ -186,7 +189,7 @@ const LiveBarcodeScanner = ({
           Try Again
         </button>
         <button
-          onClick={onManualEntry}
+          onClick={handleManualEntry}
           className={`mt-3 w-full rounded-xl py-3 text-sm font-medium text-primary-foreground active:scale-95 transition-transform ${startButtonClassName}`}
         >
           <span className="inline-flex items-center justify-center gap-2">
@@ -217,7 +220,7 @@ const LiveBarcodeScanner = ({
           )}
         </button>
         <button
-          onClick={onManualEntry}
+          onClick={handleManualEntry}
           className="mt-3 text-xs font-medium text-primary flex items-center justify-center gap-1 mx-auto"
         >
           <Keyboard size={12} /> Enter barcode manually
@@ -229,7 +232,10 @@ const LiveBarcodeScanner = ({
   return (
     <div className="rounded-2xl bg-card shadow-sm border border-border overflow-hidden">
       <div className="relative bg-foreground/95">
-        <video ref={videoRef} className="w-full" style={{ minHeight: 300 }} />
+        <div
+          id={scannerRegionIdRef.current}
+          className="min-h-[300px] w-full [&>video]:h-[300px] [&>video]:w-full [&>video]:object-cover"
+        />
 
         <div className="absolute inset-0 pointer-events-none flex items-center justify-center">
           <motion.div
@@ -239,7 +245,7 @@ const LiveBarcodeScanner = ({
           />
         </div>
 
-        {controlsRef.current?.switchTorch && (
+        {torchSupported && (
           <div className="absolute top-3 right-3 flex gap-2">
             <button onClick={toggleTorch} className="p-2 rounded-full bg-foreground/40 backdrop-blur-sm text-primary-foreground">
               {torchOn ? <Flashlight size={18} /> : <FlashlightOff size={18} />}
@@ -251,7 +257,7 @@ const LiveBarcodeScanner = ({
       <div className="p-4 text-center">
         <p className="text-sm font-medium text-foreground">Point camera at a barcode</p>
         <p className="text-xs text-muted-foreground mt-1">Hold steady — auto-detection is active</p>
-        <button onClick={onManualEntry} className="mt-3 text-xs font-medium text-primary flex items-center justify-center gap-1 mx-auto">
+        <button onClick={handleManualEntry} className="mt-3 text-xs font-medium text-primary flex items-center justify-center gap-1 mx-auto">
           <Keyboard size={12} /> Enter barcode manually
         </button>
       </div>
