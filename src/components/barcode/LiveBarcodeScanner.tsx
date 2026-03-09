@@ -56,7 +56,6 @@ const LiveBarcodeScanner = ({
 
     try {
       if (videoRef.current) {
-        // @ts-expect-error - srcObject exists on HTMLMediaElement
         videoRef.current.srcObject = null;
       }
     } catch {}
@@ -68,9 +67,6 @@ const LiveBarcodeScanner = ({
   useEffect(() => {
     return () => {
       stop();
-      try {
-        readerRef.current?.reset?.();
-      } catch {}
       readerRef.current = null;
     };
   }, [stop]);
