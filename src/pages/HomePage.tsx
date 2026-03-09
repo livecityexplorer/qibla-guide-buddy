@@ -98,9 +98,7 @@ const HomePage = () => {
     return () => clearInterval(interval);
   }, [nextPrayer.time]);
 
-  const requestLocation = useRef<() => void>(() => {}).current;
-
-  const requestLocationImpl = (async () => {
+  const requestLocation = useCallback(() => {
     if (!navigator.geolocation) {
       setLocation(t("common.locationUnavailable"));
       setWeather(null);
@@ -145,15 +143,11 @@ const HomePage = () => {
       },
       { enableHighAccuracy: true, timeout: 20000, maximumAge: 60000 }
     );
-  }) as any;
-
-  // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-  (requestLocation as any) = requestLocationImpl;
+  }, [t]);
 
   useEffect(() => {
-    requestLocationImpl();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [t]);
+    requestLocation();
+  }, [requestLocation]);
 
   const greeting = useMemo(() => {
     const h = new Date().getHours();
@@ -180,7 +174,7 @@ const HomePage = () => {
               <span className="flex items-center gap-1"><MapPinned size={13} className="text-primary" />{location}</span>
               {locationError && (
                 <button
-                  onClick={() => requestLocationImpl()}
+                  onClick={requestLocation}
                   className="text-xs font-medium text-primary-foreground/80 underline underline-offset-4"
                 >
                   Enable location
