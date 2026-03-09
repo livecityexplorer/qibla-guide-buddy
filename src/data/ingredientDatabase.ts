@@ -1034,6 +1034,24 @@ export const HARAM_ALCOHOL_KEYWORDS: string[] = [
   "beers", "wines", "spirits", "alcoholic beverages", "alcoholic drinks",
   "hard liquors", "distilled beverages", "fermented beverages",
   "craft beers", "lagers", "ales", "stouts", "porters",
+  // Additional brand names
+  "fosters", "becks", "beck's", "modelo", "dos equis", "peroni", "asahi",
+  "kirin", "sapporo", "tiger beer", "singha", "chang beer", "tusker",
+  "kilkenny", "smithwicks", "smithwick's", "harp lager", "magners",
+  "strongbow", "kopparberg", "rekorderlig", "bulmers",
+  "grey goose", "belvedere", "ketel one", "stolichnaya", "ciroc",
+  "patron", "don julio", "jose cuervo", "makers mark", "maker's mark",
+  "wild turkey", "jim beam", "woodford reserve", "bulleit",
+  "glenfiddich", "glenlivet", "macallan", "chivas regal", "dewar's",
+  "tanqueray", "bombay sapphire", "hendrick's", "gordon's gin",
+  "moet", "moët", "dom perignon", "dom pérignon", "veuve clicquot",
+  "krug", "cristal", "bollinger", "taittinger", "piper heidsieck",
+  // Common alcohol categories / descriptors
+  "wine cooler", "wine coolers", "shandy", "radler", "bitters",
+  "vermouth", "port", "marsala", "madeira", "tokaji",
+  "abv", "alcohol by volume", "proof", "double ipa", "triple ipa",
+  "imperial stout", "barleywine", "barley wine", "saison", "gose",
+  "lambic", "trappist", "abbey beer",
 ];
 
 function isPorkRelated(text: string): boolean {
