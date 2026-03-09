@@ -125,22 +125,39 @@ const HomePage = () => {
         }
 
         try {
-          const nameRes = await fetch(
-            `https://geocoding-api.open-meteo.com/v1/reverse?latitude=${latitude}&longitude=${longitude}&count=1`
-          );
-          const nameData = await nameRes.json();
-          const r = nameData.results?.[0];
-          if (r) {
-            // Build a meaningful location: city/district + admin area or country
-            const city = r.name || "";
-            const admin = r.admin1 || "";
-            const country = r.country || "";
-            // Show "City, Region" or "City, Country" — avoid repeating if city === admin
-            const secondary = admin && admin !== city ? admin : country;
-            setLocation(secondary ? `${city}, ${secondary}` : city || t("common.yourLocation"));
-          } else {
-            setLocation(t("common.yourLocation"));
+          let resolvedLocation = "";
+
+          // Primary: OpenStreetMap Nominatim (more reliable in browser for city/district)
+          try {
+            const nameRes = await fetch(
+              `https://nominatim.openstreetmap.org/reverse?lat=${latitude}&lon=${longitude}&format=json&accept-language=en`
+            );
+            if (nameRes.ok) {
+              const nameData = await nameRes.json();
+              const addr = nameData.address || {};
+              const city = addr.city || addr.town || addr.village || addr.municipality || addr.hamlet || "";
+              const district = addr.city_district || addr.suburb || addr.county || "";
+              const admin = addr.state || addr.region || addr.country || "";
+              const secondary = district && district !== city ? district : admin;
+              resolvedLocation = secondary ? `${city}, ${secondary}` : city;
+            }
+          } catch {}
+
+          // Fallback: BigDataCloud reverse geocoder
+          if (!resolvedLocation) {
+            const fallbackRes = await fetch(
+              `https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${latitude}&longitude=${longitude}&localityLanguage=en`
+            );
+            if (fallbackRes.ok) {
+              const fallbackData = await fallbackRes.json();
+              const city = fallbackData.city || fallbackData.locality || "";
+              const admin = fallbackData.principalSubdivision || fallbackData.countryName || "";
+              const secondary = admin && admin !== city ? admin : "";
+              resolvedLocation = secondary ? `${city}, ${secondary}` : city;
+            }
           }
+
+          setLocation(resolvedLocation || t("common.yourLocation"));
           setLocationError(false);
         } catch {
           setLocation(t("common.yourLocation"));
