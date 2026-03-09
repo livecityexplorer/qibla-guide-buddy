@@ -485,11 +485,15 @@ const BarcodeScanner = ({ onDetected, onManualEntry }: { onDetected: (code: stri
     detectedRef.current = false;
 
     try {
-      // Must be invoked from a user gesture on some browsers (Safari/iOS), otherwise it can show a dark/black camera screen.
+      // Check if mediaDevices is available
+      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        throw new Error("Camera API not available. Please use HTTPS or a supported browser.");
+      }
+
+      // Must be invoked from a user gesture on some browsers (Safari/iOS)
       const stream = await navigator.mediaDevices.getUserMedia({
         video: { facingMode: "environment" },
       });
-      stream.getTracks().forEach((t) => t.stop());
 
       await stopScanner();
 
@@ -502,9 +506,11 @@ const BarcodeScanner = ({ onDetected, onManualEntry }: { onDetected: (code: stri
       const scanner = new Html5Qrcode("barcode-scanner-region", { verbose: false });
       html5QrCodeRef.current = scanner;
 
+      // Stop the warm-up stream now that we're about to start html5-qrcode
+      stream.getTracks().forEach((t) => t.stop());
+
       const config: any = {
         fps: 12,
-        // Barcodes generally work better with a wider (rectangular) scan box.
         qrbox: (viewfinderWidth: number, viewfinderHeight: number) => {
           const width = Math.min(420, Math.max(260, Math.floor(viewfinderWidth * 0.9)));
           const height = Math.min(220, Math.max(120, Math.floor(viewfinderHeight * 0.35)));
@@ -513,7 +519,6 @@ const BarcodeScanner = ({ onDetected, onManualEntry }: { onDetected: (code: stri
         disableFlip: false,
         rememberLastUsedCamera: true,
         experimentalFeatures: {
-          // Uses native BarcodeDetector on supported browsers for much better barcode performance.
           useBarCodeDetectorIfSupported: true,
         },
       };
@@ -556,13 +561,19 @@ const BarcodeScanner = ({ onDetected, onManualEntry }: { onDetected: (code: stri
       setIsScanning(true);
     } catch (err: any) {
       console.error("Camera error:", err);
-      setCameraError(
-        err?.message?.includes("NotAllowed") || err?.name === "NotAllowedError"
-          ? "Camera permission denied. Please allow camera access and try again."
-          : err?.message?.includes("NotFound") || err?.name === "NotFoundError"
-            ? "No camera found on this device."
-            : "Could not start camera. Please use manual entry instead.",
-      );
+      let errorMessage = "Could not start camera. Please use manual entry instead.";
+      
+      if (err?.name === "NotAllowedError" || err?.message?.includes("NotAllowed") || err?.message?.includes("Permission denied")) {
+        errorMessage = "Camera access denied. Please allow camera permission in your browser/app settings and reload.";
+      } else if (err?.name === "NotFoundError" || err?.message?.includes("NotFound") || err?.message?.includes("Requested device not found")) {
+        errorMessage = "No camera found on this device.";
+      } else if (err?.name === "NotReadableError" || err?.message?.includes("NotReadable")) {
+        errorMessage = "Camera is in use by another app. Please close other apps using the camera.";
+      } else if (err?.message) {
+        errorMessage = `Camera error: ${err.message}`;
+      }
+      
+      setCameraError(errorMessage);
       setHasStarted(false);
       setIsScanning(false);
     } finally {
