@@ -456,20 +456,45 @@ const BarcodeScanner = ({ onDetected, onManualEntry }: { onDetected: (code: stri
     let mounted = true;
     const startScanner = async () => {
       try {
-        const { Html5Qrcode } = await import("html5-qrcode");
+        const mod: any = await import("html5-qrcode");
         if (!mounted || !scannerRef.current) return;
+
+        const Html5Qrcode = mod.Html5Qrcode;
+        const SupportedFormats = mod.Html5QrcodeSupportedFormats;
 
         const scanner = new Html5Qrcode("barcode-scanner-region", { verbose: false });
         html5QrCodeRef.current = scanner;
 
+        const config: any = {
+          fps: 12,
+          // Barcodes generally work better with a wider (rectangular) scan box.
+          qrbox: (viewfinderWidth: number, viewfinderHeight: number) => {
+            const width = Math.min(420, Math.max(260, Math.floor(viewfinderWidth * 0.9)));
+            const height = Math.min(220, Math.max(120, Math.floor(viewfinderHeight * 0.35)));
+            return { width, height };
+          },
+          disableFlip: false,
+          rememberLastUsedCamera: true,
+          experimentalFeatures: {
+            // Uses native BarcodeDetector on supported browsers for much better barcode performance.
+            useBarCodeDetectorIfSupported: true,
+          },
+        };
+
+        if (SupportedFormats) {
+          config.formatsToSupport = [
+            SupportedFormats.EAN_13,
+            SupportedFormats.EAN_8,
+            SupportedFormats.UPC_A,
+            SupportedFormats.UPC_E,
+            SupportedFormats.CODE_128,
+            SupportedFormats.ITF,
+          ].filter(Boolean);
+        }
+
         await scanner.start(
           { facingMode: "environment" },
-          {
-            fps: 10,
-            qrbox: { width: 280, height: 150 },
-            aspectRatio: 1.0,
-            disableFlip: false,
-          },
+          config,
           (decodedText: string) => {
             if (!detectedRef.current) {
               detectedRef.current = true;
@@ -478,7 +503,9 @@ const BarcodeScanner = ({ onDetected, onManualEntry }: { onDetected: (code: stri
               onDetected(decodedText);
             }
           },
-          () => {} // ignore errors during scanning
+          () => {
+            // ignore per-frame decode errors
+          },
         );
 
         if (mounted) setIsScanning(true);
@@ -489,8 +516,8 @@ const BarcodeScanner = ({ onDetected, onManualEntry }: { onDetected: (code: stri
             err?.message?.includes("NotAllowed") || err?.name === "NotAllowedError"
               ? "Camera permission denied. Please allow camera access and try again."
               : err?.message?.includes("NotFound") || err?.name === "NotFoundError"
-              ? "No camera found on this device."
-              : "Could not start camera. Please use manual entry instead."
+                ? "No camera found on this device."
+                : "Could not start camera. Please use manual entry instead.",
           );
         }
       }
