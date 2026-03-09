@@ -99,7 +99,7 @@ const QiblaPage = () => {
       } else {
         // Try absolute orientation first (better accuracy on Android)
         if ("ondeviceorientationabsolute" in window) {
-          window.addEventListener("deviceorientationabsolute" as any, handleOrientation, true);
+          (window as any).addEventListener("deviceorientationabsolute", handleOrientation, true);
         } else {
           window.addEventListener("deviceorientation", handleOrientation, true);
         }
