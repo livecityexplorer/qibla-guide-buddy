@@ -19,12 +19,12 @@ const BottomNav = () => {
   ];
 
   const moreActions = [
-    { label: t("nav.halalScanner"), icon: ScanLine, path: "/scanner" },
-    { label: t("nav.boycott"), icon: ShieldAlert, path: "/boycott" },
-    { label: t("nav.ramadan"), icon: Star, path: "/ramadan" },
-    { label: t("nav.nearby"), icon: MapPin, path: "/nearby" },
-    { label: t("nav.hadith"), icon: Moon, path: "/hadith" },
-    { label: t("nav.profile"), icon: User, path: "/profile" },
+    { label: t("nav.halalScanner"), icon: ScanLine, path: "/scanner", desc: t("more.halalDesc") },
+    { label: t("nav.boycott"), icon: ShieldAlert, path: "/boycott", desc: t("more.boycottDesc") },
+    { label: t("nav.ramadan"), icon: Star, path: "/ramadan", desc: t("more.ramadanDesc") },
+    { label: t("nav.nearby"), icon: MapPin, path: "/nearby", desc: t("more.nearbyDesc") },
+    { label: t("nav.hadith"), icon: Moon, path: "/hadith", desc: t("more.hadithDesc") },
+    { label: t("nav.profile"), icon: User, path: "/profile", desc: t("more.profileDesc") },
   ];
 
   const isMoreActive = moreActions.some(a => location.pathname.startsWith(a.path));
@@ -47,10 +47,13 @@ const BottomNav = () => {
                 const active = location.pathname.startsWith(action.path);
                 return (
                   <button key={action.path} onClick={() => { setShowMore(false); navigate(action.path); }} className={`flex flex-col items-center gap-2 rounded-xl p-3 transition-all active:scale-95 ${active ? "bg-primary/10 border-glow-gold" : "bg-secondary/50 hover:bg-secondary"}`}>
-                    <div className={`flex h-10 w-10 items-center justify-center rounded-full ${active ? "gradient-gold glow-gold" : "bg-muted"}`}>
-                      <Icon size={18} className={active ? "text-primary-foreground" : "text-foreground"} />
+                    <div className={`flex h-14 w-14 items-center justify-center rounded-2xl ${active ? "gradient-gold glow-gold" : "bg-muted"}`}>
+                      <Icon size={26} className={active ? "text-primary-foreground" : "text-foreground"} />
                     </div>
-                    <span className={`text-[11px] font-medium ${active ? "text-primary" : "text-foreground"}`}>{action.label}</span>
+                    <div className="flex flex-col items-center gap-0.5">
+                      <span className={`text-[12px] font-semibold ${active ? "text-primary" : "text-foreground"}`}>{action.label}</span>
+                      <span className="text-[10px] text-muted-foreground text-center leading-tight">{action.desc}</span>
+                    </div>
                   </button>
                 );
               })}

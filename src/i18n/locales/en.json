@@ -189,5 +189,13 @@
     "allahuAkbarMeaning": "Allah is the Greatest",
     "laIlahaIllallahMeaning": "There is no god but Allah",
     "astaghfirullahMeaning": "I seek forgiveness from Allah"
+  },
+  "more": {
+    "halalDesc": "Scan food ingredients",
+    "boycottDesc": "Check boycott brands",
+    "ramadanDesc": "Fasting schedule & tips",
+    "nearbyDesc": "Mosques & halal food",
+    "hadithDesc": "Prophetic traditions",
+    "profileDesc": "Your preferences"
   }
 }
