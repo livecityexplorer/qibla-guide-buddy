@@ -11,6 +11,7 @@ import {
   BookmarkCheck,
   Minus,
   Plus,
+  ChevronRight,
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import {
@@ -172,9 +173,29 @@ const QuranPage = () => {
     [arabicData],
   );
 
+  const pendingScrollRef = useRef<number | null>(null);
+
   const handleResumeBookmark = () => {
-    if (bookmark) setSelectedSurah(bookmark.surahNumber);
+    if (bookmark) {
+      pendingScrollRef.current = bookmark.ayahIndex;
+      setSelectedSurah(bookmark.surahNumber);
+    }
   };
+
+  // Auto-scroll to bookmarked ayah after surah loads
+  useEffect(() => {
+    if (!loading && arabicData && pendingScrollRef.current !== null) {
+      const idx = pendingScrollRef.current;
+      pendingScrollRef.current = null;
+      // Wait for DOM to render ayahs
+      requestAnimationFrame(() => {
+        setTimeout(() => {
+          const el = ayahRefs.current.get(idx);
+          if (el) el.scrollIntoView({ behavior: "smooth", block: "center" });
+        }, 300);
+      });
+    }
+  }, [loading, arabicData]);
 
   const adjustSize = (type: "arabic" | "trans", delta: number) => {
     if (type === "arabic") {
@@ -261,26 +282,41 @@ const QuranPage = () => {
           animate={{ opacity: 1 }}
           className="px-4 pb-6"
         >
-          {/* Resume bookmark */}
+          {/* Continue where you left off */}
           {bookmark && (
             <motion.button
-              initial={{ opacity: 0, y: 8 }}
+              initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.4, ease: "easeOut" }}
               onClick={handleResumeBookmark}
-              className="mb-4 w-full flex items-center gap-3 rounded-2xl bg-gradient-to-r from-primary/10 to-primary/5 border border-primary/20 p-4 text-left transition-all active:scale-[0.98] shadow-sm"
+              className="group mb-5 w-full relative overflow-hidden rounded-2xl shadow-emerald active:scale-[0.97] transition-transform"
             >
-              <div className="h-10 w-10 rounded-xl gradient-emerald flex items-center justify-center shadow-emerald shrink-0">
-                <BookmarkCheck size={18} className="text-primary-foreground" />
+              {/* Background layers */}
+              <div className="absolute inset-0 gradient-emerald" />
+              <div className="absolute inset-0 islamic-pattern opacity-40" />
+              <div className="absolute -top-8 -right-8 w-28 h-28 rounded-full border border-primary-foreground/10" />
+
+              <div className="relative flex items-center gap-4 p-5">
+                {/* Icon */}
+                <div className="h-12 w-12 rounded-xl bg-primary-foreground/20 backdrop-blur-sm flex items-center justify-center shrink-0 border border-primary-foreground/10">
+                  <BookmarkCheck size={22} className="text-primary-foreground" />
+                </div>
+
+                <div className="flex-1 min-w-0 text-left">
+                  <p className="text-base font-bold text-primary-foreground">Continue Reading</p>
+                  <p className="text-sm text-primary-foreground/70 truncate mt-0.5">
+                    {bookmark.surahName} · Ayah {bookmark.ayahNumber}
+                  </p>
+                  <p className="text-[10px] text-primary-foreground/40 mt-1">
+                    Last read {new Date(bookmark.timestamp).toLocaleDateString()}
+                  </p>
+                </div>
+
+                {/* Arrow */}
+                <div className="h-9 w-9 rounded-full bg-primary-foreground/20 flex items-center justify-center shrink-0 group-hover:bg-primary-foreground/30 transition-colors">
+                  <ChevronRight size={18} className="text-primary-foreground" />
+                </div>
               </div>
-              <div className="flex-1 min-w-0">
-                <p className="text-sm font-bold text-foreground">Continue Reading</p>
-                <p className="text-xs text-muted-foreground truncate">
-                  {bookmark.surahName} · Ayah {bookmark.ayahNumber}
-                </p>
-              </div>
-              <span className="text-[10px] text-muted-foreground shrink-0 bg-muted px-2 py-1 rounded-full">
-                {new Date(bookmark.timestamp).toLocaleDateString()}
-              </span>
             </motion.button>
           )}
 
