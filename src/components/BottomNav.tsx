@@ -19,12 +19,12 @@ const BottomNav = () => {
   ];
 
   const moreActions = [
-    { label: t("nav.halalScanner"), icon: ScanLine, path: "/scanner" },
-    { label: t("nav.boycott"), icon: ShieldAlert, path: "/boycott" },
-    { label: t("nav.ramadan"), icon: Star, path: "/ramadan" },
-    { label: t("nav.nearby"), icon: MapPin, path: "/nearby" },
-    { label: t("nav.hadith"), icon: Moon, path: "/hadith" },
-    { label: t("nav.profile"), icon: User, path: "/profile" },
+    { label: t("nav.halalScanner"), icon: ScanLine, path: "/scanner", desc: t("more.halalDesc") },
+    { label: t("nav.boycott"), icon: ShieldAlert, path: "/boycott", desc: t("more.boycottDesc") },
+    { label: t("nav.ramadan"), icon: Star, path: "/ramadan", desc: t("more.ramadanDesc") },
+    { label: t("nav.nearby"), icon: MapPin, path: "/nearby", desc: t("more.nearbyDesc") },
+    { label: t("nav.hadith"), icon: Moon, path: "/hadith", desc: t("more.hadithDesc") },
+    { label: t("nav.profile"), icon: User, path: "/profile", desc: t("more.profileDesc") },
   ];
 
   const isMoreActive = moreActions.some(a => location.pathname.startsWith(a.path));
