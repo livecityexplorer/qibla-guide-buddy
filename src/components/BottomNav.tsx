@@ -39,20 +39,20 @@ const BottomNav = () => {
 
       <AnimatePresence>
         {showMore && (
-          <motion.div initial={{ opacity: 0, y: 80 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 80 }} transition={{ type: "spring", stiffness: 400, damping: 30 }} className="fixed bottom-16 left-3 right-3 z-50 rounded-2xl glass-card-strong shadow-luxury p-4">
-            <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-3">{t("common.quickActions")}</p>
-            <div className="grid grid-cols-3 gap-3">
+          <motion.div initial={{ opacity: 0, y: 80 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 80 }} transition={{ type: "spring", stiffness: 400, damping: 30 }} className="fixed bottom-16 left-3 right-3 z-50 rounded-2xl glass-card-strong shadow-luxury p-5">
+            <p className="text-sm font-semibold uppercase tracking-wider text-primary mb-4">{t("common.quickActions")}</p>
+            <div className="grid grid-cols-3 gap-4">
               {moreActions.map((action) => {
                 const Icon = action.icon;
                 const active = location.pathname.startsWith(action.path);
                 return (
-                  <button key={action.path} onClick={() => { setShowMore(false); navigate(action.path); }} className={`flex flex-col items-center gap-2 rounded-xl p-3 transition-all active:scale-95 ${active ? "bg-primary/10 border-glow-gold" : "bg-secondary/50 hover:bg-secondary"}`}>
-                    <div className={`flex h-14 w-14 items-center justify-center rounded-2xl ${active ? "gradient-gold glow-gold" : "bg-muted"}`}>
-                      <Icon size={26} className={active ? "text-primary-foreground" : "text-foreground"} />
+                  <button key={action.path} onClick={() => { setShowMore(false); navigate(action.path); }} className={`flex flex-col items-center gap-2.5 rounded-2xl p-4 transition-all active:scale-95 border ${active ? "border-primary/30 bg-primary/10 glow-gold" : "border-primary/10 bg-secondary/30 hover:bg-primary/5 hover:border-primary/20"}`}>
+                    <div className={`flex h-16 w-16 items-center justify-center rounded-2xl ${active ? "gradient-gold glow-gold" : "bg-primary/10"}`}>
+                      <Icon size={30} className={active ? "text-primary-foreground" : "text-primary"} />
                     </div>
                     <div className="flex flex-col items-center gap-0.5">
-                      <span className={`text-[12px] font-semibold ${active ? "text-primary" : "text-foreground"}`}>{action.label}</span>
-                      <span className="text-[10px] text-muted-foreground text-center leading-tight">{action.desc}</span>
+                      <span className={`text-sm font-semibold ${active ? "text-primary" : "text-foreground"}`}>{action.label}</span>
+                      <span className="text-[11px] text-muted-foreground text-center leading-tight">{action.desc}</span>
                     </div>
                   </button>
                 );
