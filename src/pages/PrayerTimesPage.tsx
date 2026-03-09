@@ -36,7 +36,7 @@ const PrayerTimesPage = () => {
   const navigate = useNavigate();
   const { t } = useTranslation();
   const [showSettings, setShowSettings] = useState(false);
-  const { settings, notificationGranted, isPlaying, updateSettings, togglePrayer, enableAdhan, disableAdhan, testAdhan, stopPlayback } = useAdhan();
+  const { settings, notificationGranted, isPlaying, updateSettings, setPrayerEnabled, enableAdhan, disableAdhan, testAdhan, stopPlayback } = useAdhan();
 
   return (
     <div className="min-h-screen">
@@ -139,29 +139,21 @@ const PrayerTimesPage = () => {
                     const key = prayerSettingsKey(p.nameKey);
                     if (!key) return null;
 
-                    const onToggle = () => togglePrayer(key);
+                    const checked = settings.prayers[key] ?? false;
 
                     return (
                       <div
                         key={p.nameKey}
-                        role="button"
-                        tabIndex={0}
-                        onClick={onToggle}
-                        onKeyDown={(e) => {
-                          if (e.key === "Enter" || e.key === " ") {
-                            e.preventDefault();
-                            onToggle();
-                          }
-                        }}
-                        className="flex items-center justify-between rounded-lg bg-secondary/50 px-3 py-2.5 cursor-pointer active:bg-secondary/80 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                        className="flex items-center justify-between gap-3 rounded-lg bg-secondary/50 px-3 py-2.5"
                       >
-                        <span className="text-xs font-medium text-foreground">{t(p.nameKey)}</span>
-                        <Switch
-                          checked={settings.prayers[key] ?? false}
-                          onCheckedChange={onToggle}
-                          // prevent row click + switch click from toggling twice
-                          onClick={(e) => e.stopPropagation()}
-                        />
+                        <button
+                          type="button"
+                          onClick={() => setPrayerEnabled(key, !checked)}
+                          className="flex-1 rounded text-left text-xs font-medium text-foreground focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                        >
+                          {t(p.nameKey)}
+                        </button>
+                        <Switch checked={checked} onCheckedChange={(next) => setPrayerEnabled(key, next)} />
                       </div>
                     );
                   })}

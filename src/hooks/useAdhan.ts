@@ -52,6 +52,20 @@ export function useAdhan() {
     });
   }, []);
 
+  const setPrayerEnabled = useCallback(
+    (prayer: keyof AdhanSettings["prayers"], enabled: boolean) => {
+      setSettings((prev) => {
+        const next = {
+          ...prev,
+          prayers: { ...prev.prayers, [prayer]: enabled },
+        };
+        saveAdhanSettings(next);
+        return next;
+      });
+    },
+    []
+  );
+
   const togglePrayer = useCallback((prayer: keyof AdhanSettings["prayers"]) => {
     setSettings((prev) => {
       const next = {
@@ -110,6 +124,7 @@ export function useAdhan() {
     notificationGranted,
     isPlaying,
     updateSettings,
+    setPrayerEnabled,
     togglePrayer,
     enableAdhan,
     disableAdhan,
