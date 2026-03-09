@@ -184,16 +184,34 @@ const CameraScanner = ({ onDetected, onManualEntry }: { onDetected: (code: strin
     let mounted = true;
     const start = async () => {
       try {
-        const { Html5Qrcode } = await import("html5-qrcode");
+        const mod: any = await import("html5-qrcode");
         if (!mounted) return;
+        const Html5Qrcode = mod.Html5Qrcode;
+        const SupportedFormats = mod.Html5QrcodeSupportedFormats;
         const scanner = new Html5Qrcode("barcode-reader", { verbose: false });
         html5QrCodeRef.current = scanner;
+
+        const config: any = {
+          fps: 12,
+          qrbox: { width: 280, height: 150 },
+          disableFlip: false,
+          experimentalFeatures: { useBarCodeDetectorIfSupported: true },
+        };
+        if (SupportedFormats) {
+          config.formatsToSupport = [
+            SupportedFormats.EAN_13, SupportedFormats.EAN_8,
+            SupportedFormats.UPC_A, SupportedFormats.UPC_E,
+            SupportedFormats.CODE_128, SupportedFormats.ITF,
+          ].filter(Boolean);
+        }
+
         await scanner.start(
           { facingMode: "environment" },
-          { fps: 10, qrbox: { width: 280, height: 150 }, aspectRatio: 1.0 },
+          config,
           (text: string) => {
             if (!detectedRef.current) {
               detectedRef.current = true;
+              if (navigator.vibrate) navigator.vibrate(150);
               scanner.stop().catch(() => {});
               onDetected(text);
             }
@@ -209,7 +227,8 @@ const CameraScanner = ({ onDetected, onManualEntry }: { onDetected: (code: strin
       }
     };
     start();
-    return () => { mounted = false; html5QrCodeRef.current?.stop().catch(() => {}); html5QrCodeRef.current?.clear().catch(() => {}); };
+    // Only stop() — never call clear() as it deletes DOM nodes React manages
+    return () => { mounted = false; html5QrCodeRef.current?.stop().catch(() => {}); };
   }, [onDetected]);
 
   const toggleTorch = async () => {
