@@ -109,8 +109,12 @@ const LiveBarcodeScanner = ({
       stop();
       streamRef.current = stream;
 
+      // Ensure scanner view (and <video ref>) is mounted before attaching the stream.
+      setIsActive(true);
+      await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
+
       const videoEl = videoRef.current;
-      if (!videoEl) throw new Error("Video element not ready");
+      if (!videoEl) throw new Error("Video element not ready yet. Please try again.");
 
       videoEl.srcObject = stream;
       videoEl.playsInline = true;
@@ -135,7 +139,6 @@ const LiveBarcodeScanner = ({
       });
 
       controlsRef.current = controls as any;
-      setIsActive(true);
     } catch (err: any) {
       console.error("[LiveBarcodeScanner] camera error", err);
       stop();
