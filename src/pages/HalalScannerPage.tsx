@@ -134,7 +134,7 @@ const HalalScannerPage = () => {
       </div>
 
       <div className="px-4 -mt-5 pb-6 space-y-4 relative z-10">
-        <AnimatePresence mode="wait">
+        <AnimatePresence initial={false}>
           {/* ── HOME MODE ── */}
           {mode === "home" && (
             <motion.div key="home" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="space-y-4">
