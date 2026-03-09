@@ -83,7 +83,7 @@ const BarcodeScanPage = () => {
         </div>
 
         {/* Camera / Manual */}
-        {mode === "camera" && !result ? (
+        {mode === "camera" && !result && !scanning ? (
           <CameraScanner
             onDetected={(code) => { setBarcode(code); handleScan(code); }}
             onManualEntry={() => { setMode("manual"); setTimeout(() => inputRef.current?.focus(), 100); }}

@@ -275,7 +275,7 @@ const HalalScannerPage = () => {
           {/* ── SCAN MODE ── */}
           {mode === "scan" && (
             <motion.div key="scan" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="space-y-4">
-              {!singleResult && !manualEntry && (
+              {!singleResult && !manualEntry && !loading && (
                 <BarcodeScanner
                   onDetected={(code) => { setBarcode(code); handleBarcodeLookup(code); }}
                   onManualEntry={() => setManualEntry(true)}
