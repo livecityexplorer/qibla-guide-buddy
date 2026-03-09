@@ -390,51 +390,70 @@ const CameraScanner = ({ onDetected, onManualEntry }: { onDetected: (code: strin
     detectedRef.current = false;
 
     try {
-      // Check if mediaDevices is available
       if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
         throw new Error("Camera API not available. Please use HTTPS or a supported browser.");
       }
 
-      // Must be called from a user gesture on Safari/iOS
-      const stream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: "environment" },
-      });
-      // Keep the stream alive - don't stop it immediately
-      // We'll let html5-qrcode take over
+      console.log("[BoycottScan] Requesting camera permission...");
+      let stream: MediaStream;
+      try {
+        stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } });
+      } catch (e) {
+        console.log("[BoycottScan] facingMode failed, trying video:true", e);
+        stream = await navigator.mediaDevices.getUserMedia({ video: true });
+      }
 
+      console.log("[BoycottScan] Permission granted, tracks:", stream.getTracks().length);
       await stopScanner();
 
       const { Html5Qrcode } = await import("html5-qrcode");
       const scanner = new Html5Qrcode("boycott-barcode-reader", { verbose: false });
       html5QrCodeRef.current = scanner;
 
-      // Stop warm-up stream right before scanner.start so camera device is free
+      const config = { fps: 10, qrbox: { width: 280, height: 150 }, aspectRatio: 1.0 };
+
       stream.getTracks().forEach((t) => t.stop());
 
-      await scanner.start(
-        { facingMode: "environment" },
-        { fps: 10, qrbox: { width: 280, height: 150 }, aspectRatio: 1.0 },
-        (text: string) => {
-          if (!detectedRef.current) {
-            detectedRef.current = true;
-            scanner
-              .stop()
-              .catch(() => {})
-              .finally(() => {
-                try {
-                  scanner.clear?.();
-                } catch {}
-              });
-            onDetected(text);
-          }
-        },
-        () => {},
-      );
+      console.log("[BoycottScan] Starting scanner...");
+      try {
+        await scanner.start(
+          { facingMode: "environment" },
+          config,
+          (text: string) => {
+            if (!detectedRef.current) {
+              detectedRef.current = true;
+              scanner.stop().catch(() => {}).finally(() => { try { scanner.clear?.(); } catch {} });
+              onDetected(text);
+            }
+          },
+          () => {},
+        );
+      } catch (startErr) {
+        console.log("[BoycottScan] facingMode start failed, trying fallback...", startErr);
+        const cameras = await Html5Qrcode.getCameras();
+        if (cameras && cameras.length > 0) {
+          await scanner.start(
+            cameras[cameras.length - 1].id,
+            config,
+            (text: string) => {
+              if (!detectedRef.current) {
+                detectedRef.current = true;
+                scanner.stop().catch(() => {}).finally(() => { try { scanner.clear?.(); } catch {} });
+                onDetected(text);
+              }
+            },
+            () => {},
+          );
+        } else {
+          throw new Error("No cameras found on this device.");
+        }
+      }
 
+      console.log("[BoycottScan] Scanner started successfully");
       setHasStarted(true);
       setIsActive(true);
     } catch (err: any) {
-      console.error("Camera error:", err);
+      console.error("[BoycottScan] Camera error:", err);
       let errorMessage = "Could not start camera.";
       
       if (err?.name === "NotAllowedError" || err?.message?.includes("NotAllowed") || err?.message?.includes("Permission denied")) {
@@ -443,8 +462,6 @@ const CameraScanner = ({ onDetected, onManualEntry }: { onDetected: (code: strin
         errorMessage = "No camera found on this device.";
       } else if (err?.name === "NotReadableError" || err?.message?.includes("NotReadable")) {
         errorMessage = "Camera is in use by another app. Please close other apps using the camera.";
-      } else if (err?.name === "OverconstrainedError") {
-        errorMessage = "Camera constraints not supported. Trying with default camera...";
       } else if (err?.message) {
         errorMessage = `Camera error: ${err.message}`;
       }
