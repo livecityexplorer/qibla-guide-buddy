@@ -263,7 +263,7 @@ export async function requestNotificationPermission(): Promise<{ granted: boolea
 
 function getCurrentPrayerName(now: Date): string | null {
   const currentTime = `${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}`;
-  for (const [name, time] of Object.entries(getPrayerSchedule()le())) {
+  for (const [name, time] of Object.entries(getPrayerSchedule())) {
     if (time === currentTime) return name;
   }
   return null;
