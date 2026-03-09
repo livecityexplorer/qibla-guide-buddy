@@ -215,20 +215,23 @@ const CameraScanner = ({
     if (isStarting) return;
     setCameraError("");
     setIsStarting(true);
-
     detectedRef.current = false;
 
     try {
-      // Check if mediaDevices is available
       if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
         throw new Error("Camera API not available. Please use HTTPS or a supported browser.");
       }
 
-      // Must be called from a user gesture on Safari/iOS
-      const stream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: "environment" },
-      });
+      console.log("[BarcodeScan] Requesting camera permission...");
+      let stream: MediaStream;
+      try {
+        stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } });
+      } catch (e) {
+        console.log("[BarcodeScan] facingMode failed, trying video:true", e);
+        stream = await navigator.mediaDevices.getUserMedia({ video: true });
+      }
 
+      console.log("[BarcodeScan] Permission granted, tracks:", stream.getTracks().length);
       await stopScanner();
 
       const mod: any = await import("html5-qrcode");
@@ -239,7 +242,7 @@ const CameraScanner = ({
       html5QrCodeRef.current = scanner;
 
       const config: any = {
-        fps: 12,
+        fps: 10,
         qrbox: { width: 280, height: 150 },
         disableFlip: false,
         experimentalFeatures: { useBarCodeDetectorIfSupported: true },
@@ -247,43 +250,56 @@ const CameraScanner = ({
 
       if (SupportedFormats) {
         config.formatsToSupport = [
-          SupportedFormats.EAN_13,
-          SupportedFormats.EAN_8,
-          SupportedFormats.UPC_A,
-          SupportedFormats.UPC_E,
-          SupportedFormats.CODE_128,
-          SupportedFormats.ITF,
+          SupportedFormats.EAN_13, SupportedFormats.EAN_8,
+          SupportedFormats.UPC_A, SupportedFormats.UPC_E,
+          SupportedFormats.CODE_128, SupportedFormats.ITF,
         ].filter(Boolean);
       }
 
-      // Stop warm-up stream right before scanner.start so camera device is free
       stream.getTracks().forEach((t) => t.stop());
 
-      await scanner.start(
-        { facingMode: "environment" },
-        config,
-        (text: string) => {
-          if (!detectedRef.current) {
-            detectedRef.current = true;
-            if (navigator.vibrate) navigator.vibrate(150);
-            scanner
-              .stop()
-              .catch(() => {})
-              .finally(() => {
-                try {
-                  scanner.clear?.();
-                } catch {}
-              });
-            onDetected(text);
-          }
-        },
-        () => {},
-      );
+      console.log("[BarcodeScan] Starting scanner...");
+      try {
+        await scanner.start(
+          { facingMode: "environment" },
+          config,
+          (text: string) => {
+            if (!detectedRef.current) {
+              detectedRef.current = true;
+              if (navigator.vibrate) navigator.vibrate(150);
+              scanner.stop().catch(() => {}).finally(() => { try { scanner.clear?.(); } catch {} });
+              onDetected(text);
+            }
+          },
+          () => {},
+        );
+      } catch (startErr) {
+        console.log("[BarcodeScan] facingMode start failed, trying fallback...", startErr);
+        const cameras = await Html5Qrcode.getCameras();
+        if (cameras && cameras.length > 0) {
+          await scanner.start(
+            cameras[cameras.length - 1].id,
+            config,
+            (text: string) => {
+              if (!detectedRef.current) {
+                detectedRef.current = true;
+                if (navigator.vibrate) navigator.vibrate(150);
+                scanner.stop().catch(() => {}).finally(() => { try { scanner.clear?.(); } catch {} });
+                onDetected(text);
+              }
+            },
+            () => {},
+          );
+        } else {
+          throw new Error("No cameras found on this device.");
+        }
+      }
 
+      console.log("[BarcodeScan] Scanner started successfully");
       setHasStarted(true);
       setIsActive(true);
     } catch (err: any) {
-      console.error("Camera error:", err);
+      console.error("[BarcodeScan] Camera error:", err);
       let errorMessage = "Could not start camera. Please use manual entry instead.";
       
       if (err?.name === "NotAllowedError" || err?.message?.includes("NotAllowed") || err?.message?.includes("Permission denied")) {
