@@ -485,33 +485,16 @@ const BarcodeScanner = ({ onDetected, onManualEntry }: { onDetected: (code: stri
     detectedRef.current = false;
 
     try {
-      // Check if mediaDevices is available
       if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
         throw new Error("Camera API not available. Please use HTTPS or a supported browser.");
       }
 
-      console.log("[Scanner] Requesting camera permission via getUserMedia...");
-
-      // Must be invoked from a user gesture on some browsers (Safari/iOS)
-      let stream: MediaStream;
-      try {
-        stream = await navigator.mediaDevices.getUserMedia({
-          video: { facingMode: "environment" },
-        });
-      } catch (e) {
-        console.log("[Scanner] facingMode:environment failed, trying video:true", e);
-        stream = await navigator.mediaDevices.getUserMedia({ video: true });
-      }
-
-      console.log("[Scanner] Camera permission granted, tracks:", stream.getTracks().length);
+      console.log("[Scanner] Start scanner clicked");
 
       await stopScanner();
 
       const mod: any = await import("html5-qrcode");
-      if (!scannerRef.current) {
-        stream.getTracks().forEach((t) => t.stop());
-        return;
-      }
+      if (!scannerRef.current) return;
 
       const Html5Qrcode = mod.Html5Qrcode;
       const SupportedFormats = mod.Html5QrcodeSupportedFormats;
@@ -544,45 +527,30 @@ const BarcodeScanner = ({ onDetected, onManualEntry }: { onDetected: (code: stri
         ].filter(Boolean);
       }
 
-      // Release warm-up stream so html5-qrcode can acquire the camera
-      stream.getTracks().forEach((t) => t.stop());
+      const onSuccess = (decodedText: string) => {
+        if (detectedRef.current) return;
+        detectedRef.current = true;
+        if (navigator.vibrate) navigator.vibrate(200);
+        scanner.stop().catch(() => {}).finally(() => {
+          try {
+            scanner.clear?.();
+          } catch {}
+        });
+        onDetected(decodedText);
+      };
+
+      const startWith = (camera: any) => scanner.start(camera, config, onSuccess, () => {});
 
       console.log("[Scanner] Starting html5-qrcode scanner...");
 
-      // Try environment camera first, fallback to any camera
+      // Try environment camera first, fallback to any available camera id
       try {
-        await scanner.start(
-          { facingMode: "environment" },
-          config,
-          (decodedText: string) => {
-            if (!detectedRef.current) {
-              detectedRef.current = true;
-              if (navigator.vibrate) navigator.vibrate(200);
-              scanner.stop().catch(() => {}).finally(() => { try { scanner.clear?.(); } catch {} });
-              onDetected(decodedText);
-            }
-          },
-          () => {},
-        );
+        await startWith({ facingMode: "environment" });
       } catch (startErr) {
         console.log("[Scanner] facingMode start failed, trying fallback...", startErr);
-        // Fallback: use any available camera
         const cameras = await Html5Qrcode.getCameras();
         if (cameras && cameras.length > 0) {
-          const cameraId = cameras[cameras.length - 1].id; // last camera is usually rear
-          await scanner.start(
-            cameraId,
-            config,
-            (decodedText: string) => {
-              if (!detectedRef.current) {
-                detectedRef.current = true;
-                if (navigator.vibrate) navigator.vibrate(200);
-                scanner.stop().catch(() => {}).finally(() => { try { scanner.clear?.(); } catch {} });
-                onDetected(decodedText);
-              }
-            },
-            () => {},
-          );
+          await startWith(cameras[cameras.length - 1].id);
         } else {
           throw new Error("No cameras found on this device.");
         }
@@ -594,9 +562,9 @@ const BarcodeScanner = ({ onDetected, onManualEntry }: { onDetected: (code: stri
     } catch (err: any) {
       console.error("[Scanner] Camera error:", err);
       let errorMessage = "Could not start camera. Please use manual entry instead.";
-      
+
       if (err?.name === "NotAllowedError" || err?.message?.includes("NotAllowed") || err?.message?.includes("Permission denied")) {
-        errorMessage = "Camera access denied. Please allow camera permission in your browser/app settings and reload.";
+        errorMessage = "Camera access denied. Please allow camera permission for this app/site in your phone settings, then tap Try Again.";
       } else if (err?.name === "NotFoundError" || err?.message?.includes("NotFound") || err?.message?.includes("Requested device not found")) {
         errorMessage = "No camera found on this device.";
       } else if (err?.name === "NotReadableError" || err?.message?.includes("NotReadable")) {
@@ -604,7 +572,11 @@ const BarcodeScanner = ({ onDetected, onManualEntry }: { onDetected: (code: stri
       } else if (err?.message) {
         errorMessage = `Camera error: ${err.message}`;
       }
-      
+
+      try {
+        await stopScanner();
+      } catch {}
+
       setCameraError(errorMessage);
       setHasStarted(false);
       setIsScanning(false);
@@ -630,8 +602,17 @@ const BarcodeScanner = ({ onDetected, onManualEntry }: { onDetected: (code: stri
         <p className="mt-3 text-sm font-medium text-foreground">Camera Unavailable</p>
         <p className="text-xs text-muted-foreground mt-1">{cameraError}</p>
         <button
+          onClick={() => {
+            setCameraError("");
+            startScanner();
+          }}
+          className="mt-4 w-full rounded-xl border border-border py-3 text-sm font-medium text-foreground active:scale-95 transition-transform"
+        >
+          Try Again
+        </button>
+        <button
           onClick={onManualEntry}
-          className="mt-4 w-full rounded-xl gradient-emerald py-3 text-sm font-medium text-primary-foreground shadow-emerald active:scale-95 transition-transform"
+          className="mt-3 w-full rounded-xl gradient-emerald py-3 text-sm font-medium text-primary-foreground shadow-emerald active:scale-95 transition-transform"
         >
           Enter Barcode Manually
         </button>
@@ -652,10 +633,7 @@ const BarcodeScanner = ({ onDetected, onManualEntry }: { onDetected: (code: stri
         >
           {isStarting ? "Starting…" : "Start Scanner"}
         </button>
-        <button
-          onClick={onManualEntry}
-          className="mt-3 text-xs font-medium text-primary flex items-center justify-center gap-1 mx-auto"
-        >
+        <button onClick={onManualEntry} className="mt-3 text-xs font-medium text-primary flex items-center justify-center gap-1 mx-auto">
           <Keyboard size={12} /> Enter barcode manually
         </button>
       </div>

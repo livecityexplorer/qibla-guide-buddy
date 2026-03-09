@@ -1,4 +1,4 @@
-import { useMemo, useState, useEffect, useRef } from "react";
+import { useMemo, useState, useEffect, useCallback } from "react";
 import { motion } from "framer-motion";
 import { Clock, BookOpen, Compass, ScanLine, MapPin, Moon, Star, ShieldAlert, CloudSun, MapPinned, Calendar, RotateCcw } from "lucide-react";
 import { useNavigate } from "react-router-dom";
@@ -58,6 +58,7 @@ const HomePage = () => {
   const navigate = useNavigate();
   const { t } = useTranslation();
   const [location, setLocation] = useState<string>(t("common.loading"));
+  const [locationError, setLocationError] = useState(false);
   const [weather, setWeather] = useState<WeatherData | null>(null);
   const islamicDate = useMemo(() => getIslamicDate(), []);
   const dailyHadith = useMemo(() => getDailyHadith(), []);
@@ -97,28 +98,56 @@ const HomePage = () => {
     return () => clearInterval(interval);
   }, [nextPrayer.time]);
 
-  useEffect(() => {
-    if (navigator.geolocation) {
-      navigator.geolocation.getCurrentPosition(
-        async (pos) => {
-          const { latitude, longitude } = pos.coords;
-          try {
-            const geoRes = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${latitude}&longitude=${longitude}&current=temperature_2m,weather_code&timezone=auto`);
-            const geoData = await geoRes.json();
-            const temp = Math.round(geoData.current?.temperature_2m || 0);
-            const code = geoData.current?.weather_code || 0;
-            setWeather({ temp, description: getWeatherDescription(code), icon: getWeatherIcon(code) });
-          } catch { setWeather(null); }
-          try {
-            const nameRes = await fetch(`https://geocoding-api.open-meteo.com/v1/reverse?latitude=${latitude}&longitude=${longitude}&count=1`);
-            const nameData = await nameRes.json();
-            setLocation(nameData.results?.[0] ? `${nameData.results[0].name}, ${nameData.results[0].country}` : t("common.yourLocation"));
-          } catch { setLocation(t("common.yourLocation")); }
-        },
-        () => setLocation(t("common.locationUnavailable"))
-      );
+  const requestLocation = useCallback(() => {
+    if (!navigator.geolocation) {
+      setLocation(t("common.locationUnavailable"));
+      setWeather(null);
+      setLocationError(true);
+      return;
     }
+
+    setLocation(t("common.loading"));
+    setLocationError(false);
+
+    navigator.geolocation.getCurrentPosition(
+      async (pos) => {
+        const { latitude, longitude } = pos.coords;
+        try {
+          const geoRes = await fetch(
+            `https://api.open-meteo.com/v1/forecast?latitude=${latitude}&longitude=${longitude}&current=temperature_2m,weather_code&timezone=auto`
+          );
+          const geoData = await geoRes.json();
+          const temp = Math.round(geoData.current?.temperature_2m || 0);
+          const code = geoData.current?.weather_code || 0;
+          setWeather({ temp, description: getWeatherDescription(code), icon: getWeatherIcon(code) });
+        } catch {
+          setWeather(null);
+        }
+
+        try {
+          const nameRes = await fetch(
+            `https://geocoding-api.open-meteo.com/v1/reverse?latitude=${latitude}&longitude=${longitude}&count=1`
+          );
+          const nameData = await nameRes.json();
+          setLocation(nameData.results?.[0] ? `${nameData.results[0].name}, ${nameData.results[0].country}` : t("common.yourLocation"));
+          setLocationError(false);
+        } catch {
+          setLocation(t("common.yourLocation"));
+          setLocationError(false);
+        }
+      },
+      () => {
+        setLocation(t("common.locationUnavailable"));
+        setWeather(null);
+        setLocationError(true);
+      },
+      { enableHighAccuracy: true, timeout: 20000, maximumAge: 60000 }
+    );
   }, [t]);
+
+  useEffect(() => {
+    requestLocation();
+  }, [requestLocation]);
 
   const greeting = useMemo(() => {
     const h = new Date().getHours();
@@ -143,6 +172,14 @@ const HomePage = () => {
             <h1 className="mt-1 text-2xl font-bold text-foreground">{greeting} 👋</h1>
             <div className="mt-1 flex items-center gap-3 text-sm text-muted-foreground">
               <span className="flex items-center gap-1"><MapPinned size={13} className="text-primary" />{location}</span>
+              {locationError && (
+                <button
+                  onClick={requestLocation}
+                  className="text-xs font-medium text-primary-foreground/80 underline underline-offset-4"
+                >
+                  Enable location
+                </button>
+              )}
             </div>
           </motion.div>
         </div>

@@ -213,6 +213,7 @@ const CameraScanner = ({
 
   const startScanner = useCallback(async () => {
     if (isStarting) return;
+
     setCameraError("");
     setIsStarting(true);
     detectedRef.current = false;
@@ -222,21 +223,15 @@ const CameraScanner = ({
         throw new Error("Camera API not available. Please use HTTPS or a supported browser.");
       }
 
-      console.log("[BarcodeScan] Requesting camera permission...");
-      let stream: MediaStream;
-      try {
-        stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } });
-      } catch (e) {
-        console.log("[BarcodeScan] facingMode failed, trying video:true", e);
-        stream = await navigator.mediaDevices.getUserMedia({ video: true });
-      }
+      console.log("[BarcodeScan] Start scanner clicked");
 
-      console.log("[BarcodeScan] Permission granted, tracks:", stream.getTracks().length);
       await stopScanner();
 
       const mod: any = await import("html5-qrcode");
       const Html5Qrcode = mod.Html5Qrcode;
       const SupportedFormats = mod.Html5QrcodeSupportedFormats;
+
+      if (!scannerRef.current) return;
 
       const scanner = new Html5Qrcode("barcode-reader", { verbose: false });
       html5QrCodeRef.current = scanner;
@@ -250,46 +245,38 @@ const CameraScanner = ({
 
       if (SupportedFormats) {
         config.formatsToSupport = [
-          SupportedFormats.EAN_13, SupportedFormats.EAN_8,
-          SupportedFormats.UPC_A, SupportedFormats.UPC_E,
-          SupportedFormats.CODE_128, SupportedFormats.ITF,
+          SupportedFormats.EAN_13,
+          SupportedFormats.EAN_8,
+          SupportedFormats.UPC_A,
+          SupportedFormats.UPC_E,
+          SupportedFormats.CODE_128,
+          SupportedFormats.ITF,
         ].filter(Boolean);
       }
 
-      stream.getTracks().forEach((t) => t.stop());
+      const onSuccess = (text: string) => {
+        if (detectedRef.current) return;
+        detectedRef.current = true;
+        if (navigator.vibrate) navigator.vibrate(150);
+        scanner.stop().catch(() => {}).finally(() => {
+          try {
+            scanner.clear?.();
+          } catch {}
+        });
+        onDetected(text);
+      };
 
-      console.log("[BarcodeScan] Starting scanner...");
+      const startWith = (camera: any) => scanner.start(camera, config, onSuccess, () => {});
+
+      console.log("[BarcodeScan] Starting html5-qrcode...");
+
       try {
-        await scanner.start(
-          { facingMode: "environment" },
-          config,
-          (text: string) => {
-            if (!detectedRef.current) {
-              detectedRef.current = true;
-              if (navigator.vibrate) navigator.vibrate(150);
-              scanner.stop().catch(() => {}).finally(() => { try { scanner.clear?.(); } catch {} });
-              onDetected(text);
-            }
-          },
-          () => {},
-        );
+        await startWith({ facingMode: "environment" });
       } catch (startErr) {
-        console.log("[BarcodeScan] facingMode start failed, trying fallback...", startErr);
+        console.log("[BarcodeScan] facingMode start failed, trying getCameras...", startErr);
         const cameras = await Html5Qrcode.getCameras();
         if (cameras && cameras.length > 0) {
-          await scanner.start(
-            cameras[cameras.length - 1].id,
-            config,
-            (text: string) => {
-              if (!detectedRef.current) {
-                detectedRef.current = true;
-                if (navigator.vibrate) navigator.vibrate(150);
-                scanner.stop().catch(() => {}).finally(() => { try { scanner.clear?.(); } catch {} });
-                onDetected(text);
-              }
-            },
-            () => {},
-          );
+          await startWith(cameras[cameras.length - 1].id);
         } else {
           throw new Error("No cameras found on this device.");
         }
@@ -301,9 +288,9 @@ const CameraScanner = ({
     } catch (err: any) {
       console.error("[BarcodeScan] Camera error:", err);
       let errorMessage = "Could not start camera. Please use manual entry instead.";
-      
+
       if (err?.name === "NotAllowedError" || err?.message?.includes("NotAllowed") || err?.message?.includes("Permission denied")) {
-        errorMessage = "Camera access denied. Please allow camera permission in your browser/app settings and reload.";
+        errorMessage = "Camera access denied. Please allow camera permission for this app/site in your phone settings, then tap Try Again.";
       } else if (err?.name === "NotFoundError" || err?.message?.includes("NotFound") || err?.message?.includes("Requested device not found")) {
         errorMessage = "No camera found on this device.";
       } else if (err?.name === "NotReadableError" || err?.message?.includes("NotReadable")) {
@@ -311,7 +298,11 @@ const CameraScanner = ({
       } else if (err?.message) {
         errorMessage = `Camera error: ${err.message}`;
       }
-      
+
+      try {
+        await stopScanner();
+      } catch {}
+
       setCameraError(errorMessage);
       setHasStarted(false);
       setIsActive(false);
@@ -337,8 +328,17 @@ const CameraScanner = ({
         <p className="mt-3 text-sm font-medium text-foreground">Camera Unavailable</p>
         <p className="text-xs text-muted-foreground mt-1">{cameraError}</p>
         <button
+          onClick={() => {
+            setCameraError("");
+            startScanner();
+          }}
+          className="mt-4 w-full rounded-xl border border-border py-3 text-sm font-medium text-foreground active:scale-95 transition-transform"
+        >
+          Try Again
+        </button>
+        <button
           onClick={onManualEntry}
-          className="mt-4 w-full rounded-xl gradient-emerald py-3 text-sm font-medium text-primary-foreground shadow-emerald"
+          className="mt-3 w-full rounded-xl gradient-emerald py-3 text-sm font-medium text-primary-foreground shadow-emerald"
         >
           Enter Barcode Manually
         </button>

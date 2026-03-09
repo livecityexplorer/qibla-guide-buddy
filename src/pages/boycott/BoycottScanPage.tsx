@@ -394,56 +394,40 @@ const CameraScanner = ({ onDetected, onManualEntry }: { onDetected: (code: strin
         throw new Error("Camera API not available. Please use HTTPS or a supported browser.");
       }
 
-      console.log("[BoycottScan] Requesting camera permission...");
-      let stream: MediaStream;
-      try {
-        stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } });
-      } catch (e) {
-        console.log("[BoycottScan] facingMode failed, trying video:true", e);
-        stream = await navigator.mediaDevices.getUserMedia({ video: true });
-      }
+      console.log("[BoycottScan] Start scanner clicked");
 
-      console.log("[BoycottScan] Permission granted, tracks:", stream.getTracks().length);
       await stopScanner();
 
       const { Html5Qrcode } = await import("html5-qrcode");
+      if (!scannerRef.current) return;
+
       const scanner = new Html5Qrcode("boycott-barcode-reader", { verbose: false });
       html5QrCodeRef.current = scanner;
 
       const config = { fps: 10, qrbox: { width: 280, height: 150 }, aspectRatio: 1.0 };
 
-      stream.getTracks().forEach((t) => t.stop());
+      const onSuccess = (text: string) => {
+        if (detectedRef.current) return;
+        detectedRef.current = true;
+        scanner.stop().catch(() => {}).finally(() => {
+          try {
+            scanner.clear?.();
+          } catch {}
+        });
+        onDetected(text);
+      };
+
+      const startWith = (camera: any) => scanner.start(camera, config, onSuccess, () => {});
 
       console.log("[BoycottScan] Starting scanner...");
+
       try {
-        await scanner.start(
-          { facingMode: "environment" },
-          config,
-          (text: string) => {
-            if (!detectedRef.current) {
-              detectedRef.current = true;
-              scanner.stop().catch(() => {}).finally(() => { try { scanner.clear?.(); } catch {} });
-              onDetected(text);
-            }
-          },
-          () => {},
-        );
+        await startWith({ facingMode: "environment" });
       } catch (startErr) {
         console.log("[BoycottScan] facingMode start failed, trying fallback...", startErr);
         const cameras = await Html5Qrcode.getCameras();
         if (cameras && cameras.length > 0) {
-          await scanner.start(
-            cameras[cameras.length - 1].id,
-            config,
-            (text: string) => {
-              if (!detectedRef.current) {
-                detectedRef.current = true;
-                scanner.stop().catch(() => {}).finally(() => { try { scanner.clear?.(); } catch {} });
-                onDetected(text);
-              }
-            },
-            () => {},
-          );
+          await startWith(cameras[cameras.length - 1].id);
         } else {
           throw new Error("No cameras found on this device.");
         }
@@ -455,9 +439,9 @@ const CameraScanner = ({ onDetected, onManualEntry }: { onDetected: (code: strin
     } catch (err: any) {
       console.error("[BoycottScan] Camera error:", err);
       let errorMessage = "Could not start camera.";
-      
+
       if (err?.name === "NotAllowedError" || err?.message?.includes("NotAllowed") || err?.message?.includes("Permission denied")) {
-        errorMessage = "Camera access denied. Please allow camera permission in your browser/app settings and reload.";
+        errorMessage = "Camera access denied. Please allow camera permission for this app/site in your phone settings, then tap Try Again.";
       } else if (err?.name === "NotFoundError" || err?.message?.includes("NotFound") || err?.message?.includes("Requested device not found")) {
         errorMessage = "No camera found on this device.";
       } else if (err?.name === "NotReadableError" || err?.message?.includes("NotReadable")) {
@@ -465,7 +449,11 @@ const CameraScanner = ({ onDetected, onManualEntry }: { onDetected: (code: strin
       } else if (err?.message) {
         errorMessage = `Camera error: ${err.message}`;
       }
-      
+
+      try {
+        await stopScanner();
+      } catch {}
+
       setCameraError(errorMessage);
       setHasStarted(false);
       setIsActive(false);
@@ -491,8 +479,17 @@ const CameraScanner = ({ onDetected, onManualEntry }: { onDetected: (code: strin
         <p className="mt-3 text-sm font-medium text-foreground">Camera Unavailable</p>
         <p className="text-xs text-muted-foreground mt-1">{cameraError}</p>
         <button
+          onClick={() => {
+            setCameraError("");
+            startScanner();
+          }}
+          className="mt-4 w-full rounded-xl border border-border py-3 text-sm font-medium text-foreground active:scale-95 transition-transform"
+        >
+          Try Again
+        </button>
+        <button
           onClick={onManualEntry}
-          className="mt-4 w-full rounded-xl bg-gradient-to-r from-red-700 to-red-900 py-3 text-sm font-medium text-white shadow-md"
+          className="mt-3 w-full rounded-xl bg-gradient-to-r from-red-700 to-red-900 py-3 text-sm font-medium text-white shadow-md"
         >
           Enter Barcode Manually
         </button>

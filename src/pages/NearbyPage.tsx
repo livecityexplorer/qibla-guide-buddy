@@ -287,6 +287,7 @@ const NearbyPage = () => {
   const [userLon, setUserLon] = useState<number | null>(null);
   const [expandedId, setExpandedId] = useState<number | null>(null);
   const [searchRadius, setSearchRadius] = useState(5000);
+  const [locationBlocked, setLocationBlocked] = useState(false);
 
   const typeConfig: Record<PlaceType, { emoji: string; label: string }> = {
     mosque: { emoji: "🕌", label: t("nearby.mosque") },
@@ -300,8 +301,8 @@ const NearbyPage = () => {
     setError("");
     try {
       // Launch all API sources in parallel for maximum coverage
-      const typesToSearch: PlaceType[] = type === "all" 
-        ? ["mosque", "restaurant", "shop", "butcher"] 
+      const typesToSearch: PlaceType[] = type === "all"
+        ? ["mosque", "restaurant", "shop", "butcher"]
         : [type];
 
       const searchMosques = type === "all" || type === "mosque";
@@ -346,7 +347,11 @@ const NearbyPage = () => {
     }
   }, [searchRadius, t]);
 
-  useEffect(() => {
+  const requestLocation = useCallback(() => {
+    setLoading(true);
+    setError("");
+    setLocationBlocked(false);
+
     if (!navigator.geolocation) {
       setError("Geolocation is not supported by your browser.");
       setLoading(false);
@@ -360,13 +365,18 @@ const NearbyPage = () => {
         setUserLon(longitude);
         fetchPlaces(latitude, longitude, filter);
       },
-      (err) => {
+      () => {
+        setLocationBlocked(true);
         setError("Location access denied. Please enable location to find nearby places.");
         setLoading(false);
       },
-      { enableHighAccuracy: true, timeout: 10000 }
+      { enableHighAccuracy: true, timeout: 20000, maximumAge: 60000 }
     );
-  }, []);
+  }, [fetchPlaces, filter]);
+
+  useEffect(() => {
+    requestLocation();
+  }, [requestLocation]);
 
   useEffect(() => {
     if (userLat !== null && userLon !== null) {
@@ -378,7 +388,7 @@ const NearbyPage = () => {
     // Try native geo URI first (works on mobile), fallback to Google Maps
     const geoUri = `geo:${place.lat},${place.lon}?q=${place.lat},${place.lon}(${encodeURIComponent(place.name)})`;
     const googleMapsUrl = `https://www.google.com/maps/dir/?api=1&origin=${userLat},${userLon}&destination=${place.lat},${place.lon}&travelmode=driving`;
-    
+
     // On mobile, geo: URI opens native maps; on desktop, fallback to Google Maps
     const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
     if (isMobile) {
@@ -472,13 +482,25 @@ const NearbyPage = () => {
             <AlertCircle size={18} className="text-destructive shrink-0 mt-0.5" />
             <div>
               <p className="text-sm text-destructive">{error}</p>
-              {userLat && userLon && (
+              {userLat && userLon ? (
                 <button
                   onClick={() => fetchPlaces(userLat, userLon, filter)}
                   className="mt-2 flex items-center gap-1 text-xs font-medium text-primary"
                 >
                   <RefreshCw size={12} /> Try again
                 </button>
+              ) : (
+                <button
+                  onClick={requestLocation}
+                  className="mt-2 flex items-center gap-1 text-xs font-medium text-primary"
+                >
+                  <MapPin size={12} /> Enable location
+                </button>
+              )}
+              {locationBlocked && (
+                <p className="mt-1 text-[11px] text-muted-foreground">
+                  If you denied it before, enable Location permission in your phone settings for this app, then try again.
+                </p>
               )}
             </div>
           </div>
