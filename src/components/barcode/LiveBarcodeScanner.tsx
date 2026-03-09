@@ -112,7 +112,6 @@ const LiveBarcodeScanner = ({
       const videoEl = videoRef.current;
       if (!videoEl) throw new Error("Video element not ready");
 
-      // @ts-expect-error - srcObject exists on HTMLMediaElement
       videoEl.srcObject = stream;
       videoEl.playsInline = true;
       videoEl.muted = true;
