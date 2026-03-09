@@ -124,6 +124,7 @@ export function useAdhan() {
     notificationGranted,
     isPlaying,
     updateSettings,
+    setPrayerEnabled,
     togglePrayer,
     enableAdhan,
     disableAdhan,
