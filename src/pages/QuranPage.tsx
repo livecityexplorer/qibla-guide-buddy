@@ -11,6 +11,7 @@ import {
   BookmarkCheck,
   Minus,
   Plus,
+  ChevronRight,
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import {
