@@ -378,27 +378,47 @@ const QuranPage = () => {
               {/* Back to surah list button */}
               <button
                 onClick={() => setSelectedSurah(null)}
-                className="flex items-center gap-2 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors mb-2"
+                className="flex items-center gap-2 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors mb-3"
               >
                 <ArrowLeft size={18} />
                 Back to Surah List
               </button>
 
-              {/* Surah header */}
-              <div className="rounded-xl gradient-emerald p-4 text-center shadow-emerald">
-                <h2 className="text-xl font-bold text-primary-foreground font-arabic">{arabicData.name}</h2>
-                <p className="mt-1 text-sm text-primary-foreground/70">
-                  {arabicData.englishName} · {arabicData.englishNameTranslation}
-                </p>
-                <p className="text-xs text-primary-foreground/50 mt-1">
-                  {arabicData.numberOfAyahs} ayahs · {arabicData.revelationType}
-                </p>
-                <button
-                  onClick={handlePlayAll}
-                  className="mt-3 inline-flex items-center gap-2 rounded-full bg-primary-foreground/20 px-4 py-2 text-sm font-medium text-primary-foreground"
-                >
-                  <Play size={14} /> Play All
-                </button>
+              {/* Enhanced Surah header card */}
+              <div className="relative rounded-2xl overflow-hidden shadow-emerald">
+                <div className="absolute inset-0 gradient-emerald" />
+                <div className="absolute inset-0 islamic-pattern opacity-60" />
+                <div className="absolute -top-10 -right-10 w-36 h-36 rounded-full border border-primary-foreground/10" />
+                <div className="absolute -bottom-8 -left-8 w-28 h-28 rounded-full border border-primary-foreground/8" />
+                <div className="relative p-6 text-center">
+                  <p className="text-primary-foreground/30 text-lg font-arabic mb-2">﷽</p>
+                  <h2 className="text-3xl font-bold text-primary-foreground font-arabic leading-relaxed">
+                    {arabicData.name}
+                  </h2>
+                  <div className="mt-2 inline-flex items-center gap-2">
+                    <span className="text-base font-semibold text-primary-foreground/90">
+                      {arabicData.englishName}
+                    </span>
+                    <span className="h-1 w-1 rounded-full bg-primary-foreground/40" />
+                    <span className="text-sm text-primary-foreground/60">
+                      {arabicData.englishNameTranslation}
+                    </span>
+                  </div>
+                  <div className="mt-2 flex items-center justify-center gap-3">
+                    <span className="text-xs text-primary-foreground/50 bg-primary-foreground/10 px-2.5 py-1 rounded-full">
+                      {arabicData.numberOfAyahs} Ayahs
+                    </span>
+                    <span className="text-xs text-primary-foreground/50 bg-primary-foreground/10 px-2.5 py-1 rounded-full">
+                      {arabicData.revelationType}
+                    </span>
+                  </div>
+                  <button
+                    onClick={handlePlayAll}
+                    className="mt-4 inline-flex items-center gap-2 rounded-full bg-primary-foreground/20 backdrop-blur-sm border border-primary-foreground/20 px-5 py-2.5 text-sm font-semibold text-primary-foreground hover:bg-primary-foreground/30 transition-colors active:scale-95"
+                  >
+                    <Play size={14} /> Play Entire Surah
+                  </button>
+                </div>
               </div>
 
               {/* Text Size + Translation selector */}
