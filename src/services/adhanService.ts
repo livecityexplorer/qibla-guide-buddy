@@ -417,9 +417,28 @@ async function registerPeriodicSync() {
 
 // ─── Init ───
 
+function initGestureAudioUnlock() {
+  // Ensure at least one trusted user gesture happens before we ever need scheduled audio.
+  const handler = () => {
+    try {
+      unlockAdhanAudio(getAdhanSettings());
+      console.log("[adhan] audio unlocked via user gesture");
+    } catch (e) {
+      console.log("[adhan] audio unlock failed", e);
+    }
+  };
+
+  const opts: AddEventListenerOptions = { once: true, passive: true };
+  document.addEventListener("touchstart", handler, opts);
+  document.addEventListener("mousedown", handler, opts);
+  document.addEventListener("keydown", handler, opts);
+}
+
 export function initAdhanService(): void {
+  initGestureAudioUnlock();
+
   const settings = getAdhanSettings();
-  
+
   if (settings.enabled) {
     scheduleAdhan(settings);
     syncSettingsToSW(settings);
