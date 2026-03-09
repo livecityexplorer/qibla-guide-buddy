@@ -219,11 +219,15 @@ const CameraScanner = ({
     detectedRef.current = false;
 
     try {
-      // Must be called from a user gesture on Safari/iOS, otherwise the camera can show a black/dark screen.
+      // Check if mediaDevices is available
+      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        throw new Error("Camera API not available. Please use HTTPS or a supported browser.");
+      }
+
+      // Must be called from a user gesture on Safari/iOS
       const stream = await navigator.mediaDevices.getUserMedia({
         video: { facingMode: "environment" },
       });
-      stream.getTracks().forEach((t) => t.stop());
 
       await stopScanner();
 
@@ -233,6 +237,9 @@ const CameraScanner = ({
 
       const scanner = new Html5Qrcode("barcode-reader", { verbose: false });
       html5QrCodeRef.current = scanner;
+
+      // Stop the warm-up stream now that we're about to start html5-qrcode
+      stream.getTracks().forEach((t) => t.stop());
 
       const config: any = {
         fps: 12,
@@ -277,13 +284,19 @@ const CameraScanner = ({
       setIsActive(true);
     } catch (err: any) {
       console.error("Camera error:", err);
-      setCameraError(
-        err?.name === "NotAllowedError" || err?.message?.includes("NotAllowed")
-          ? "Camera permission denied. Please allow camera access and try again."
-          : err?.name === "NotFoundError" || err?.message?.includes("NotFound")
-            ? "No camera found on this device."
-            : "Could not start camera. Please use manual entry instead.",
-      );
+      let errorMessage = "Could not start camera. Please use manual entry instead.";
+      
+      if (err?.name === "NotAllowedError" || err?.message?.includes("NotAllowed") || err?.message?.includes("Permission denied")) {
+        errorMessage = "Camera access denied. Please allow camera permission in your browser/app settings and reload.";
+      } else if (err?.name === "NotFoundError" || err?.message?.includes("NotFound") || err?.message?.includes("Requested device not found")) {
+        errorMessage = "No camera found on this device.";
+      } else if (err?.name === "NotReadableError" || err?.message?.includes("NotReadable")) {
+        errorMessage = "Camera is in use by another app. Please close other apps using the camera.";
+      } else if (err?.message) {
+        errorMessage = `Camera error: ${err.message}`;
+      }
+      
+      setCameraError(errorMessage);
       setHasStarted(false);
       setIsActive(false);
     } finally {

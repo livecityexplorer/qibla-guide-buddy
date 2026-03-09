@@ -390,17 +390,26 @@ const CameraScanner = ({ onDetected, onManualEntry }: { onDetected: (code: strin
     detectedRef.current = false;
 
     try {
-      // Must be called from a user gesture on Safari/iOS, otherwise camera can show a dark/black screen.
+      // Check if mediaDevices is available
+      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        throw new Error("Camera API not available. Please use HTTPS or a supported browser.");
+      }
+
+      // Must be called from a user gesture on Safari/iOS
       const stream = await navigator.mediaDevices.getUserMedia({
         video: { facingMode: "environment" },
       });
-      stream.getTracks().forEach((t) => t.stop());
+      // Keep the stream alive - don't stop it immediately
+      // We'll let html5-qrcode take over
 
       await stopScanner();
 
       const { Html5Qrcode } = await import("html5-qrcode");
       const scanner = new Html5Qrcode("boycott-barcode-reader", { verbose: false });
       html5QrCodeRef.current = scanner;
+
+      // Stop the warm-up stream now that we're about to start html5-qrcode
+      stream.getTracks().forEach((t) => t.stop());
 
       await scanner.start(
         { facingMode: "environment" },
@@ -425,13 +434,22 @@ const CameraScanner = ({ onDetected, onManualEntry }: { onDetected: (code: strin
       setHasStarted(true);
       setIsActive(true);
     } catch (err: any) {
-      setCameraError(
-        err?.name === "NotAllowedError" || err?.message?.includes("NotAllowed")
-          ? "Camera access denied. Please allow camera permission."
-          : err?.name === "NotFoundError" || err?.message?.includes("NotFound")
-            ? "No camera found."
-            : "Could not start camera.",
-      );
+      console.error("Camera error:", err);
+      let errorMessage = "Could not start camera.";
+      
+      if (err?.name === "NotAllowedError" || err?.message?.includes("NotAllowed") || err?.message?.includes("Permission denied")) {
+        errorMessage = "Camera access denied. Please allow camera permission in your browser/app settings and reload.";
+      } else if (err?.name === "NotFoundError" || err?.message?.includes("NotFound") || err?.message?.includes("Requested device not found")) {
+        errorMessage = "No camera found on this device.";
+      } else if (err?.name === "NotReadableError" || err?.message?.includes("NotReadable")) {
+        errorMessage = "Camera is in use by another app. Please close other apps using the camera.";
+      } else if (err?.name === "OverconstrainedError") {
+        errorMessage = "Camera constraints not supported. Trying with default camera...";
+      } else if (err?.message) {
+        errorMessage = `Camera error: ${err.message}`;
+      }
+      
+      setCameraError(errorMessage);
       setHasStarted(false);
       setIsActive(false);
     } finally {
