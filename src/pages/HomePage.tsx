@@ -334,16 +334,16 @@ const HomePage = () => {
 
         {/* Quick Actions */}
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.55 }}>
-          <h3 className="mb-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground">{t("home.quickActions")}</h3>
+          <h3 className="mb-3 text-sm font-semibold uppercase tracking-wider text-muted-foreground">{t("home.quickActions")}</h3>
           <div className="grid grid-cols-4 gap-3">
             {QUICK_ACTIONS.map((action) => {
               const Icon = action.icon;
               return (
-                <button key={action.label} onClick={() => navigate(action.path)} className="group flex flex-col items-center gap-2 rounded-2xl glass-card p-3 transition-all hover:glow-gold active:scale-95">
-                  <div className="flex h-11 w-11 items-center justify-center rounded-full bg-primary/10 group-hover:bg-primary/20 transition-colors">
-                    <Icon size={20} className="text-primary" />
+                <button key={action.label} onClick={() => navigate(action.path)} className="group flex flex-col items-center gap-2.5 rounded-2xl glass-card p-4 transition-all hover:glow-gold active:scale-95">
+                  <div className="flex h-14 w-14 items-center justify-center rounded-full bg-primary/10 group-hover:bg-primary/20 transition-colors">
+                    <Icon size={26} className="text-primary" />
                   </div>
-                  <span className="text-[11px] font-medium text-muted-foreground group-hover:text-foreground transition-colors">{action.label}</span>
+                  <span className="text-xs font-medium text-muted-foreground group-hover:text-foreground transition-colors text-center leading-tight">{action.label}</span>
                 </button>
               );
             })}
