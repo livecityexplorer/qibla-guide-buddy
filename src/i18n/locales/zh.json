@@ -189,5 +189,13 @@
     "allahuAkbarMeaning": "真主至大",
     "laIlahaIllallahMeaning": "万物非主唯有真主",
     "astaghfirullahMeaning": "求主饶恕"
+  },
+  "more": {
+    "halalDesc": "扫描食品成分",
+    "boycottDesc": "查看抵制品牌",
+    "ramadanDesc": "斋戒时间与建议",
+    "nearbyDesc": "清真寺与清真美食",
+    "hadithDesc": "先知传统",
+    "profileDesc": "您的偏好设置"
   }
 }
