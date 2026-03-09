@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { motion } from "framer-motion";
 import { Camera, Keyboard, Flashlight, FlashlightOff, Loader2 } from "lucide-react";
-import { BrowserMultiFormatReader } from "@zxing/browser";
+import { BrowserMultiFormatReader, DecodeHintType } from "@zxing/browser";
+import { BarcodeFormat } from "@zxing/library";
 
 type LiveBarcodeScannerProps = {
   onDetected: (code: string) => void;
