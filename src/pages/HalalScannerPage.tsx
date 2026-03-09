@@ -506,9 +506,6 @@ const BarcodeScanner = ({ onDetected, onManualEntry }: { onDetected: (code: stri
       const scanner = new Html5Qrcode("barcode-scanner-region", { verbose: false });
       html5QrCodeRef.current = scanner;
 
-      // Stop the warm-up stream now that we're about to start html5-qrcode
-      stream.getTracks().forEach((t) => t.stop());
-
       const config: any = {
         fps: 12,
         qrbox: (viewfinderWidth: number, viewfinderHeight: number) => {
@@ -534,6 +531,10 @@ const BarcodeScanner = ({ onDetected, onManualEntry }: { onDetected: (code: stri
         ].filter(Boolean);
       }
 
+      // Stop the warm-up stream RIGHT before starting html5-qrcode
+      // so the camera device is released for the library to grab it
+      stream.getTracks().forEach((t) => t.stop());
+
       await scanner.start(
         { facingMode: "environment" },
         config,
@@ -552,9 +553,7 @@ const BarcodeScanner = ({ onDetected, onManualEntry }: { onDetected: (code: stri
             onDetected(decodedText);
           }
         },
-        () => {
-          // ignore per-frame decode errors
-        },
+        () => {},
       );
 
       setHasStarted(true);
