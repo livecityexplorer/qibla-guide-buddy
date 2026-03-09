@@ -172,69 +172,132 @@ const BarcodeScanPage = () => {
 };
 
 /* ── Camera Scanner Component ── */
-const CameraScanner = ({ onDetected, onManualEntry }: { onDetected: (code: string) => void; onManualEntry: () => void }) => {
+const CameraScanner = ({
+  onDetected,
+  onManualEntry,
+}: {
+  onDetected: (code: string) => void;
+  onManualEntry: () => void;
+}) => {
   const scannerRef = useRef<HTMLDivElement>(null);
   const html5QrCodeRef = useRef<any>(null);
   const [cameraError, setCameraError] = useState("");
   const [isActive, setIsActive] = useState(false);
+  const [isStarting, setIsStarting] = useState(false);
+  const [hasStarted, setHasStarted] = useState(false);
   const [torch, setTorch] = useState(false);
   const detectedRef = useRef(false);
 
+  const stopScanner = useCallback(async () => {
+    const scanner = html5QrCodeRef.current;
+    if (!scanner) return;
+
+    try {
+      await scanner.stop();
+    } catch {}
+
+    try {
+      scanner.clear?.();
+    } catch {}
+
+    html5QrCodeRef.current = null;
+    setIsActive(false);
+    setTorch(false);
+  }, []);
+
   useEffect(() => {
-    let mounted = true;
-    const start = async () => {
-      try {
-        const mod: any = await import("html5-qrcode");
-        if (!mounted) return;
-        const Html5Qrcode = mod.Html5Qrcode;
-        const SupportedFormats = mod.Html5QrcodeSupportedFormats;
-        const scanner = new Html5Qrcode("barcode-reader", { verbose: false });
-        html5QrCodeRef.current = scanner;
-
-        const config: any = {
-          fps: 12,
-          qrbox: { width: 280, height: 150 },
-          disableFlip: false,
-          experimentalFeatures: { useBarCodeDetectorIfSupported: true },
-        };
-        if (SupportedFormats) {
-          config.formatsToSupport = [
-            SupportedFormats.EAN_13, SupportedFormats.EAN_8,
-            SupportedFormats.UPC_A, SupportedFormats.UPC_E,
-            SupportedFormats.CODE_128, SupportedFormats.ITF,
-          ].filter(Boolean);
-        }
-
-        await scanner.start(
-          { facingMode: "environment" },
-          config,
-          (text: string) => {
-            if (!detectedRef.current) {
-              detectedRef.current = true;
-              if (navigator.vibrate) navigator.vibrate(150);
-              scanner.stop().catch(() => {});
-              onDetected(text);
-            }
-          },
-          () => {}
-        );
-        if (mounted) setIsActive(true);
-      } catch (err: any) {
-        if (mounted) setCameraError(
-          err?.name === "NotAllowedError" ? "Camera access denied. Please allow camera permission." :
-          err?.name === "NotFoundError" ? "No camera found." : "Could not start camera."
-        );
-      }
+    return () => {
+      stopScanner();
     };
-    start();
-    // Only stop() — never call clear() as it deletes DOM nodes React manages
-    return () => { mounted = false; html5QrCodeRef.current?.stop().catch(() => {}); };
-  }, [onDetected]);
+  }, [stopScanner]);
+
+  const startScanner = useCallback(async () => {
+    if (isStarting) return;
+    setCameraError("");
+    setIsStarting(true);
+
+    detectedRef.current = false;
+
+    try {
+      // Must be called from a user gesture on Safari/iOS, otherwise the camera can show a black/dark screen.
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: "environment" },
+      });
+      stream.getTracks().forEach((t) => t.stop());
+
+      await stopScanner();
+
+      const mod: any = await import("html5-qrcode");
+      const Html5Qrcode = mod.Html5Qrcode;
+      const SupportedFormats = mod.Html5QrcodeSupportedFormats;
+
+      const scanner = new Html5Qrcode("barcode-reader", { verbose: false });
+      html5QrCodeRef.current = scanner;
+
+      const config: any = {
+        fps: 12,
+        qrbox: { width: 280, height: 150 },
+        disableFlip: false,
+        experimentalFeatures: { useBarCodeDetectorIfSupported: true },
+      };
+
+      if (SupportedFormats) {
+        config.formatsToSupport = [
+          SupportedFormats.EAN_13,
+          SupportedFormats.EAN_8,
+          SupportedFormats.UPC_A,
+          SupportedFormats.UPC_E,
+          SupportedFormats.CODE_128,
+          SupportedFormats.ITF,
+        ].filter(Boolean);
+      }
+
+      await scanner.start(
+        { facingMode: "environment" },
+        config,
+        (text: string) => {
+          if (!detectedRef.current) {
+            detectedRef.current = true;
+            if (navigator.vibrate) navigator.vibrate(150);
+            scanner
+              .stop()
+              .catch(() => {})
+              .finally(() => {
+                try {
+                  scanner.clear?.();
+                } catch {}
+              });
+            onDetected(text);
+          }
+        },
+        () => {},
+      );
+
+      setHasStarted(true);
+      setIsActive(true);
+    } catch (err: any) {
+      console.error("Camera error:", err);
+      setCameraError(
+        err?.name === "NotAllowedError" || err?.message?.includes("NotAllowed")
+          ? "Camera permission denied. Please allow camera access and try again."
+          : err?.name === "NotFoundError" || err?.message?.includes("NotFound")
+            ? "No camera found on this device."
+            : "Could not start camera. Please use manual entry instead.",
+      );
+      setHasStarted(false);
+      setIsActive(false);
+    } finally {
+      setIsStarting(false);
+    }
+  }, [isStarting, onDetected, stopScanner]);
 
   const toggleTorch = async () => {
     try {
       const track = html5QrCodeRef.current?.getRunningTrackCameraCapabilities?.();
-      if (track?.torchFeature?.isSupported()) { await track.torchFeature.apply(!torch); setTorch(!torch); }
+      if (track?.torchFeature?.isSupported()) {
+        await track.torchFeature.apply(!torch);
+        setTorch(!torch);
+      }
     } catch {}
   };
 
@@ -244,9 +307,36 @@ const CameraScanner = ({ onDetected, onManualEntry }: { onDetected: (code: strin
         <Camera size={48} className="mx-auto text-muted-foreground/30" />
         <p className="mt-3 text-sm font-medium text-foreground">Camera Unavailable</p>
         <p className="text-xs text-muted-foreground mt-1">{cameraError}</p>
-        <button onClick={onManualEntry}
-          className="mt-4 w-full rounded-xl gradient-emerald py-3 text-sm font-medium text-primary-foreground shadow-emerald">
+        <button
+          onClick={onManualEntry}
+          className="mt-4 w-full rounded-xl gradient-emerald py-3 text-sm font-medium text-primary-foreground shadow-emerald"
+        >
           Enter Barcode Manually
+        </button>
+      </div>
+    );
+  }
+
+  if (!hasStarted) {
+    return (
+      <div className="rounded-2xl bg-card p-6 shadow-sm border border-border text-center">
+        <Camera size={48} className="mx-auto text-muted-foreground/30" />
+        <p className="mt-3 text-sm font-medium text-foreground">Ready to Scan</p>
+        <p className="text-xs text-muted-foreground mt-1">
+          Tap “Start Scanner” to open your camera.
+        </p>
+        <button
+          onClick={startScanner}
+          disabled={isStarting}
+          className="mt-4 w-full rounded-xl gradient-emerald py-3 text-sm font-medium text-primary-foreground shadow-emerald active:scale-95 transition-transform disabled:opacity-50"
+        >
+          {isStarting ? "Starting…" : "Start Scanner"}
+        </button>
+        <button
+          onClick={onManualEntry}
+          className="mt-3 text-xs font-medium text-primary flex items-center justify-center gap-1 mx-auto"
+        >
+          <Keyboard size={12} /> Enter barcode manually
         </button>
       </div>
     );
@@ -258,8 +348,11 @@ const CameraScanner = ({ onDetected, onManualEntry }: { onDetected: (code: strin
         <div id="barcode-reader" ref={scannerRef} className="w-full" style={{ minHeight: 300 }} />
         {isActive && (
           <div className="absolute inset-0 pointer-events-none flex items-center justify-center">
-            <motion.div animate={{ y: [-60, 60] }} transition={{ repeat: Infinity, repeatType: "reverse", duration: 1.5, ease: "easeInOut" }}
-              className="w-64 h-0.5 rounded-full bg-emerald-mid shadow-[0_0_10px_2px_hsl(var(--emerald-mid)/0.5)]" />
+            <motion.div
+              animate={{ y: [-60, 60] }}
+              transition={{ repeat: Infinity, repeatType: "reverse", duration: 1.5, ease: "easeInOut" }}
+              className="w-64 h-0.5 rounded-full bg-emerald-mid shadow-[0_0_10px_2px_hsl(var(--emerald-mid)/0.5)]"
+            />
           </div>
         )}
         <div className="absolute top-3 right-3 flex gap-2">

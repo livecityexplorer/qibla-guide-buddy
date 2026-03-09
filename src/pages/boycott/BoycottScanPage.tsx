@@ -355,43 +355,89 @@ const CameraScanner = ({ onDetected, onManualEntry }: { onDetected: (code: strin
   const html5QrCodeRef = useRef<any>(null);
   const [cameraError, setCameraError] = useState("");
   const [isActive, setIsActive] = useState(false);
+  const [isStarting, setIsStarting] = useState(false);
+  const [hasStarted, setHasStarted] = useState(false);
   const [torch, setTorch] = useState(false);
   const detectedRef = useRef(false);
 
+  const stopScanner = useCallback(async () => {
+    const scanner = html5QrCodeRef.current;
+    if (!scanner) return;
+
+    try {
+      await scanner.stop();
+    } catch {}
+
+    try {
+      scanner.clear?.();
+    } catch {}
+
+    html5QrCodeRef.current = null;
+    setIsActive(false);
+    setTorch(false);
+  }, []);
+
   useEffect(() => {
-    let mounted = true;
-    const start = async () => {
-      try {
-        const { Html5Qrcode } = await import("html5-qrcode");
-        if (!mounted) return;
-        const scanner = new Html5Qrcode("boycott-barcode-reader", { verbose: false });
-        html5QrCodeRef.current = scanner;
-        await scanner.start(
-          { facingMode: "environment" },
-          { fps: 10, qrbox: { width: 280, height: 150 }, aspectRatio: 1.0 },
-          (text: string) => {
-            if (!detectedRef.current) {
-              detectedRef.current = true;
-              scanner.stop().catch(() => {});
-              onDetected(text);
-            }
-          },
-          () => {}
-        );
-        if (mounted) setIsActive(true);
-      } catch (err: any) {
-        if (mounted) setCameraError(
-          err?.name === "NotAllowedError" ? "Camera access denied. Please allow camera permission." :
-          err?.name === "NotFoundError" ? "No camera found." : "Could not start camera."
-        );
-      }
-    };
-    start();
     return () => {
-      mounted = false;
-      html5QrCodeRef.current?.stop().catch(() => {});
+      stopScanner();
     };
-  }, [onDetected]);
+  }, [stopScanner]);
+
+  const startScanner = useCallback(async () => {
+    if (isStarting) return;
+    setCameraError("");
+    setIsStarting(true);
+    detectedRef.current = false;
+
+    try {
+      // Must be called from a user gesture on Safari/iOS, otherwise camera can show a dark/black screen.
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: "environment" },
+      });
+      stream.getTracks().forEach((t) => t.stop());
+
+      await stopScanner();
+
+      const { Html5Qrcode } = await import("html5-qrcode");
+      const scanner = new Html5Qrcode("boycott-barcode-reader", { verbose: false });
+      html5QrCodeRef.current = scanner;
+
+      await scanner.start(
+        { facingMode: "environment" },
+        { fps: 10, qrbox: { width: 280, height: 150 }, aspectRatio: 1.0 },
+        (text: string) => {
+          if (!detectedRef.current) {
+            detectedRef.current = true;
+            scanner
+              .stop()
+              .catch(() => {})
+              .finally(() => {
+                try {
+                  scanner.clear?.();
+                } catch {}
+              });
+            onDetected(text);
+          }
+        },
+        () => {},
+      );
+
+      setHasStarted(true);
+      setIsActive(true);
+    } catch (err: any) {
+      setCameraError(
+        err?.name === "NotAllowedError" || err?.message?.includes("NotAllowed")
+          ? "Camera access denied. Please allow camera permission."
+          : err?.name === "NotFoundError" || err?.message?.includes("NotFound")
+            ? "No camera found."
+            : "Could not start camera.",
+      );
+      setHasStarted(false);
+      setIsActive(false);
+    } finally {
+      setIsStarting(false);
+    }
+  }, [isStarting, onDetected, stopScanner]);
 
   const toggleTorch = async () => {
     try {
@@ -414,6 +460,26 @@ const CameraScanner = ({ onDetected, onManualEntry }: { onDetected: (code: strin
           className="mt-4 w-full rounded-xl bg-gradient-to-r from-red-700 to-red-900 py-3 text-sm font-medium text-white shadow-md"
         >
           Enter Barcode Manually
+        </button>
+      </div>
+    );
+  }
+
+  if (!hasStarted) {
+    return (
+      <div className="rounded-2xl bg-card p-6 shadow-sm border border-border text-center">
+        <Camera size={48} className="mx-auto text-muted-foreground/30" />
+        <p className="mt-3 text-sm font-medium text-foreground">Ready to Scan</p>
+        <p className="text-xs text-muted-foreground mt-1">Tap “Start Scanner” to open your camera.</p>
+        <button
+          onClick={startScanner}
+          disabled={isStarting}
+          className="mt-4 w-full rounded-xl bg-gradient-to-r from-red-700 to-red-900 py-3 text-sm font-medium text-white shadow-md active:scale-95 transition-transform disabled:opacity-50"
+        >
+          {isStarting ? "Starting…" : "Start Scanner"}
+        </button>
+        <button onClick={onManualEntry} className="mt-3 text-xs font-medium text-primary flex items-center justify-center gap-1 mx-auto">
+          <Keyboard size={12} /> Enter barcode manually
         </button>
       </div>
     );
