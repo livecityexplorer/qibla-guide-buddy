@@ -255,13 +255,13 @@ const QiblaPage = () => {
             {/* Qibla line */}
             <div className="absolute left-1/2 top-6 -translate-x-1/2 w-1 h-[calc(50%-24px)] rounded-full gradient-gold shadow-[0_0_8px_2px_hsl(var(--gold)/0.3)]" />
             {/* Kaaba icon at tip */}
-            <div className="absolute left-1/2 top-3 -translate-x-1/2 -translate-y-1/2">
-              <div className={`w-8 h-8 rounded-full flex items-center justify-center transition-all ${
+            <div className="absolute left-1/2 top-1 -translate-x-1/2 -translate-y-1/2">
+              <div className={`w-12 h-12 rounded-full flex items-center justify-center transition-all ${
                 isAligned
-                  ? "bg-emerald-500 shadow-[0_0_16px_4px_hsl(var(--emerald-mid)/0.4)] scale-110"
+                  ? "bg-emerald-500 shadow-[0_0_20px_6px_hsl(var(--emerald-mid)/0.4)] scale-110"
                   : "gradient-gold shadow-gold"
               }`}>
-                <span className="text-sm">🕋</span>
+                <span className="text-2xl">🕋</span>
               </div>
             </div>
           </motion.div>
