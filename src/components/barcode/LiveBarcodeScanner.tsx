@@ -124,7 +124,11 @@ const LiveBarcodeScanner = ({
         await videoEl.play();
       } catch {}
 
-      if (!readerRef.current) readerRef.current = new BrowserMultiFormatReader();
+      if (!readerRef.current) {
+        const hints = new Map();
+        hints.set(2 /* DecodeHintType.TRY_HARDER */, true);
+        readerRef.current = new BrowserMultiFormatReader(hints, { delayBetweenScanAttempts: 150 });
+      }
 
       const controls = await readerRef.current.decodeFromStream(stream, videoEl, (result, _error, controls) => {
         if (result) {
