@@ -189,5 +189,13 @@
     "allahuAkbarMeaning": "الله أكبر",
     "laIlahaIllallahMeaning": "لا إله إلا الله",
     "astaghfirullahMeaning": "أستغفر الله"
+  },
+  "more": {
+    "halalDesc": "مسح مكونات الطعام",
+    "boycottDesc": "التحقق من العلامات المقاطعة",
+    "ramadanDesc": "جدول الصيام والنصائح",
+    "nearbyDesc": "المساجد والطعام الحلال",
+    "hadithDesc": "الأحاديث النبوية",
+    "profileDesc": "تفضيلاتك"
   }
 }
