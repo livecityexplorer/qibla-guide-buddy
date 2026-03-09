@@ -1117,14 +1117,16 @@ export function analyzeIngredientList(ingredients: string[]): { ingredient: stri
 export function getOverallStatus(results: { status: HalalStatus }[]): HalalStatus {
   if (results.some(r => r.status === "haram")) return "haram";
   if (results.some(r => r.status === "mushbooh")) return "mushbooh";
-  // Only flag as mushbooh if majority of ingredients are unknown AND there are very few known-halal ones
   const unknownCount = results.filter(r => r.status === "unknown").length;
   const halalCount = results.filter(r => r.status === "halal").length;
   const total = results.length;
-  // If we have some halal ingredients and the unknowns are common/safe food words, treat as halal
-  if (total === 0) return "unknown";
-  if (unknownCount > 0 && halalCount === 0 && total === unknownCount) return "unknown";
-  if (unknownCount > 0 && halalCount > 0) return "halal"; // mostly identified, unknowns are likely safe
+  if (total === 0) return "mushbooh"; // no ingredients found = doubtful
+  if (unknownCount > 0 && halalCount === 0) return "mushbooh"; // all unknown = doubtful
+  if (unknownCount > 0 && halalCount > 0) {
+    // If more than half are unknown, mark as doubtful
+    if (unknownCount > halalCount) return "mushbooh";
+    return "halal"; // mostly identified, unknowns are likely safe
+  }
   return "halal";
 }
 
