@@ -388,10 +388,10 @@ export function scheduleAdhan(settings: AdhanSettings): void {
   const now = new Date();
   const currentMs = now.getHours() * 3600000 + now.getMinutes() * 60000 + now.getSeconds() * 1000;
 
-  for (const [prayerName, timeStr] of Object.entries(PRAYER_SCHEDULE)) {
+  for (const [prayerName, timeStr] of Object.entries(getPrayerSchedule())) {
     if (!settings.prayers[prayerName as keyof AdhanSettings["prayers"]]) continue;
 
-    const [h, m] = timeStr.split(":").map(Number);
+    const [h, m] = (timeStr as string).split(":").map(Number);
     const prayerMs = h * 3600000 + m * 60000;
 
     // Schedule at prayer time
