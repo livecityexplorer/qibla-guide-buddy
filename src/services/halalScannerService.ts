@@ -75,6 +75,13 @@ function detectPorkFromMetadata(name: string, categories: string[]): string[] {
 // Check product name and categories for alcohol indicators
 function detectAlcoholFromMetadata(name: string, categories: string[]): boolean {
   const combined = `${name} ${categories.join(" ")}`.toLowerCase();
+  
+  // Direct category check for common OFF alcohol categories
+  const alcoholCategories = ["alcoholic", "beer", "wine", "spirit", "liquor", "liqueur", "cider", "mead", "sake"];
+  if (categories.some(cat => alcoholCategories.some(ac => cat.toLowerCase().includes(ac)))) {
+    return true;
+  }
+  
   for (const kw of HARAM_ALCOHOL_KEYWORDS) {
     const kwLower = kw.toLowerCase();
     // Word boundary check to avoid false positives (e.g. "ginger" matching "gin")

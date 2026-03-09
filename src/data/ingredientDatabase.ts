@@ -1034,6 +1034,24 @@ export const HARAM_ALCOHOL_KEYWORDS: string[] = [
   "beers", "wines", "spirits", "alcoholic beverages", "alcoholic drinks",
   "hard liquors", "distilled beverages", "fermented beverages",
   "craft beers", "lagers", "ales", "stouts", "porters",
+  // Additional brand names
+  "fosters", "becks", "beck's", "modelo", "dos equis", "peroni", "asahi",
+  "kirin", "sapporo", "tiger beer", "singha", "chang beer", "tusker",
+  "kilkenny", "smithwicks", "smithwick's", "harp lager", "magners",
+  "strongbow", "kopparberg", "rekorderlig", "bulmers",
+  "grey goose", "belvedere", "ketel one", "stolichnaya", "ciroc",
+  "patron", "don julio", "jose cuervo", "makers mark", "maker's mark",
+  "wild turkey", "jim beam", "woodford reserve", "bulleit",
+  "glenfiddich", "glenlivet", "macallan", "chivas regal", "dewar's",
+  "tanqueray", "bombay sapphire", "hendrick's", "gordon's gin",
+  "moet", "moët", "dom perignon", "dom pérignon", "veuve clicquot",
+  "krug", "cristal", "bollinger", "taittinger", "piper heidsieck",
+  // Common alcohol categories / descriptors
+  "wine cooler", "wine coolers", "shandy", "radler", "bitters",
+  "vermouth", "port", "marsala", "madeira", "tokaji",
+  "abv", "alcohol by volume", "proof", "double ipa", "triple ipa",
+  "imperial stout", "barleywine", "barley wine", "saison", "gose",
+  "lambic", "trappist", "abbey beer",
 ];
 
 function isPorkRelated(text: string): boolean {
@@ -1117,14 +1135,16 @@ export function analyzeIngredientList(ingredients: string[]): { ingredient: stri
 export function getOverallStatus(results: { status: HalalStatus }[]): HalalStatus {
   if (results.some(r => r.status === "haram")) return "haram";
   if (results.some(r => r.status === "mushbooh")) return "mushbooh";
-  // Only flag as mushbooh if majority of ingredients are unknown AND there are very few known-halal ones
   const unknownCount = results.filter(r => r.status === "unknown").length;
   const halalCount = results.filter(r => r.status === "halal").length;
   const total = results.length;
-  // If we have some halal ingredients and the unknowns are common/safe food words, treat as halal
-  if (total === 0) return "unknown";
-  if (unknownCount > 0 && halalCount === 0 && total === unknownCount) return "unknown";
-  if (unknownCount > 0 && halalCount > 0) return "halal"; // mostly identified, unknowns are likely safe
+  if (total === 0) return "mushbooh"; // no ingredients found = doubtful
+  if (unknownCount > 0 && halalCount === 0) return "mushbooh"; // all unknown = doubtful
+  if (unknownCount > 0 && halalCount > 0) {
+    // If more than half are unknown, mark as doubtful
+    if (unknownCount > halalCount) return "mushbooh";
+    return "halal"; // mostly identified, unknowns are likely safe
+  }
   return "halal";
 }
 
