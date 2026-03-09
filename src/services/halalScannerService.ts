@@ -1,4 +1,13 @@
-import { ingredientDatabase, findIngredient, analyzeIngredientList, getOverallStatus, type HalalStatus, HARAM_PORK_KEYWORDS, HARAM_ALCOHOL_KEYWORDS } from "@/data/ingredientDatabase";
+import {
+  ingredientDatabase,
+  findIngredient,
+  analyzeIngredientList,
+  getOverallStatus,
+  type HalalStatus,
+  HARAM_PORK_KEYWORDS,
+  HARAM_ALCOHOL_KEYWORDS,
+} from "@/data/ingredientDatabase";
+import { detectNaturallyHalalProduct } from "@/services/halalScanner/halalPositiveDetector";
 
 export interface ProductResult {
   id: string;
@@ -29,7 +38,11 @@ function parseIngredients(text: string): string[] {
     .filter(s => s.length > 1 && s.length < 80);
 }
 
-function generateSummary(analysis: { ingredient: string; status: HalalStatus }[], overallStatus: HalalStatus, productType: "food" | "cosmetic" | "unknown" = "food"): string {
+function generateSummary(
+  analysis: { ingredient: string; status: HalalStatus }[],
+  overallStatus: HalalStatus,
+  productType: "food" | "cosmetic" | "unknown" = "food"
+): string {
   const haramIngredients = analysis.filter(a => a.status === "haram").map(a => a.ingredient);
   const mushboohIngredients = analysis.filter(a => a.status === "mushbooh").map(a => a.ingredient);
   const typeLabel = productType === "cosmetic" ? "use" : "consumption";
@@ -49,12 +62,42 @@ function generateSummary(analysis: { ingredient: string; status: HalalStatus }[]
 function detectProductType(categories: string[], name: string): "food" | "cosmetic" | "unknown" {
   const combined = `${name} ${categories.join(" ")}`.toLowerCase();
   const cosmeticKeywords = [
-    "cosmetic", "beauty", "skincare", "skin care", "makeup", "make-up", "lipstick",
-    "shampoo", "conditioner", "soap", "lotion", "cream", "serum", "moisturizer",
-    "sunscreen", "deodorant", "perfume", "fragrance", "nail polish", "mascara",
-    "foundation", "concealer", "blush", "eyeshadow", "eyeliner", "body wash",
-    "face wash", "cleanser", "toner", "hair care", "toothpaste", "mouthwash",
-    "body lotion", "hand cream", "lip balm", "shower gel",
+    "cosmetic",
+    "beauty",
+    "skincare",
+    "skin care",
+    "makeup",
+    "make-up",
+    "lipstick",
+    "shampoo",
+    "conditioner",
+    "soap",
+    "lotion",
+    "cream",
+    "serum",
+    "moisturizer",
+    "sunscreen",
+    "deodorant",
+    "perfume",
+    "fragrance",
+    "nail polish",
+    "mascara",
+    "foundation",
+    "concealer",
+    "blush",
+    "eyeshadow",
+    "eyeliner",
+    "body wash",
+    "face wash",
+    "cleanser",
+    "toner",
+    "hair care",
+    "toothpaste",
+    "mouthwash",
+    "body lotion",
+    "hand cream",
+    "lip balm",
+    "shower gel",
   ];
   if (cosmeticKeywords.some(kw => combined.includes(kw))) return "cosmetic";
   return "unknown";
@@ -75,17 +118,17 @@ function detectPorkFromMetadata(name: string, categories: string[]): string[] {
 // Check product name and categories for alcohol indicators
 function detectAlcoholFromMetadata(name: string, categories: string[]): boolean {
   const combined = `${name} ${categories.join(" ")}`.toLowerCase();
-  
+
   // Direct category check for common OFF alcohol categories
   const alcoholCategories = ["alcoholic", "beer", "wine", "spirit", "liquor", "liqueur", "cider", "mead", "sake"];
   if (categories.some(cat => alcoholCategories.some(ac => cat.toLowerCase().includes(ac)))) {
     return true;
   }
-  
+
   for (const kw of HARAM_ALCOHOL_KEYWORDS) {
     const kwLower = kw.toLowerCase();
     // Word boundary check to avoid false positives (e.g. "ginger" matching "gin")
-    const regex = new RegExp(`\\b${kwLower.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`, 'i');
+    const regex = new RegExp(`\\b${kwLower.replace(/[.*+?^${}()|[\\]\\\\]/g, "\\\\$&")}\\b`, "i");
     if (regex.test(combined)) {
       return true;
     }
@@ -100,16 +143,22 @@ export async function searchByBarcode(barcode: string): Promise<ProductResult | 
   return _searchBarcodeFromAPI(OBF_API, barcode, "openbeautyfacts");
 }
 
-async function _searchBarcodeFromAPI(apiBase: string, barcode: string, source: "openfoodfacts" | "openbeautyfacts"): Promise<ProductResult | null> {
+async function _searchBarcodeFromAPI(
+  apiBase: string,
+  barcode: string,
+  source: "openfoodfacts" | "openbeautyfacts"
+): Promise<ProductResult | null> {
   try {
-    const res = await fetch(`${apiBase}/api/v2/product/${barcode}?fields=code,product_name,brands,image_front_url,categories_tags,ingredients_text_en,ingredients_text`);
+    const res = await fetch(
+      `${apiBase}/api/v2/product/${barcode}?fields=code,product_name,brands,image_front_url,categories_tags,ingredients_text_en,ingredients_text`
+    );
     const data = await res.json();
     if (data.status === 0 || !data.product) return null;
     const p = data.product;
     const ingredientsText = p.ingredients_text_en || p.ingredients_text || "";
     const ingredients = parseIngredients(ingredientsText);
     const categories = (p.categories_tags || []).map((c: string) => c.replace("en:", "").replace(/-/g, " "));
-    
+
     const porkFromMeta = detectPorkFromMetadata(p.product_name || "", categories);
     const allIngredients = [...ingredients];
     for (const pk of porkFromMeta) {
@@ -117,20 +166,39 @@ async function _searchBarcodeFromAPI(apiBase: string, barcode: string, source: "
         allIngredients.push(pk);
       }
     }
-    
-    const analysis = analyzeIngredientList(allIngredients);
-    let status = getOverallStatus(analysis);
-    const productType = source === "openbeautyfacts" ? "cosmetic" as const : detectProductType(categories, p.product_name || "");
 
-    // Override: detect alcoholic products from name/categories
+    let analysis = analyzeIngredientList(allIngredients);
+    let status = getOverallStatus(analysis);
+    const productType = source === "openbeautyfacts" ? ("cosmetic" as const) : detectProductType(categories, p.product_name || "");
+
+    // If ingredient data is missing/weak, try multilingual "naturally Halal" product-name matching
+    const naturallyHalal = detectNaturallyHalalProduct(p.product_name || "", categories);
+    const ingredientDataWeak =
+      ingredients.length === 0 ||
+      (analysis.length > 0 && analysis.every(a => a.status === "unknown") && analysis.length <= 2);
+
+    let confidence: ProductResult["confidence"] = ingredients.length > 3 ? "analysis-based" : "low";
+    let appliedNaturallyHalal = false;
+
+    if (status === "mushbooh" && ingredientDataWeak && naturallyHalal) {
+      status = "halal";
+      confidence = "high";
+      appliedNaturallyHalal = true;
+      analysis = [{ ingredient: naturallyHalal.label, info: null, status: "halal" }, ...analysis];
+    }
+
+    // Override: detect alcoholic products from name/categories (must remain highest priority)
     const isAlcohol = detectAlcoholFromMetadata(p.product_name || "", categories);
     if (isAlcohol) {
       status = "haram";
+      confidence = "high";
     }
 
     const summary = isAlcohol
       ? `This is an alcoholic product. Alcohol (khamr) is clearly Haram in Islam. Not suitable for Muslim consumption.`
-      : generateSummary(analysis, status, productType);
+      : appliedNaturallyHalal && naturallyHalal
+        ? `Likely single-ingredient ${naturallyHalal.label} (matched "${naturallyHalal.matchedKeyword}"). Ingredients list is missing/unclear; classified as Halal. Always verify certification for full assurance.`
+        : generateSummary(analysis, status, productType);
 
     return {
       id: p.code || barcode,
@@ -143,7 +211,7 @@ async function _searchBarcodeFromAPI(apiBase: string, barcode: string, source: "
       ingredientsText,
       status,
       summary,
-      confidence: isAlcohol ? "high" : (ingredients.length > 3 ? "analysis-based" : "low"),
+      confidence,
       analysis,
       source,
       productType,
@@ -159,7 +227,7 @@ export async function searchByName(query: string, page = 1): Promise<{ products:
     _searchNameFromAPI(OFF_API, query, page, "openfoodfacts"),
     _searchNameFromAPI(OBF_API, query, page, "openbeautyfacts"),
   ]);
-  
+
   // Merge results, deduplicate by barcode, food results first
   const seen = new Set<string>();
   const merged: ProductResult[] = [];
@@ -169,11 +237,16 @@ export async function searchByName(query: string, page = 1): Promise<{ products:
       merged.push(p);
     }
   }
-  
+
   return { products: merged, count: foodResults.count + beautyResults.count };
 }
 
-async function _searchNameFromAPI(apiBase: string, query: string, page: number, source: "openfoodfacts" | "openbeautyfacts"): Promise<{ products: ProductResult[]; count: number }> {
+async function _searchNameFromAPI(
+  apiBase: string,
+  query: string,
+  page: number,
+  source: "openfoodfacts" | "openbeautyfacts"
+): Promise<{ products: ProductResult[]; count: number }> {
   try {
     const res = await fetch(
       `${apiBase}/cgi/search.pl?search_terms=${encodeURIComponent(query)}&search_simple=1&action=process&json=1&page=${page}&page_size=20&fields=code,product_name,brands,image_front_small_url,categories_tags,ingredients_text_en,ingredients_text`
@@ -185,7 +258,7 @@ async function _searchNameFromAPI(apiBase: string, query: string, page: number, 
         const ingredientsText = p.ingredients_text_en || p.ingredients_text || "";
         const ingredients = parseIngredients(ingredientsText);
         const categories = (p.categories_tags || []).slice(0, 3).map((c: string) => c.replace("en:", "").replace(/-/g, " "));
-        
+
         const porkFromMeta = detectPorkFromMetadata(p.product_name || "", categories);
         const allIngredients = [...ingredients];
         for (const pk of porkFromMeta) {
@@ -193,18 +266,39 @@ async function _searchNameFromAPI(apiBase: string, query: string, page: number, 
             allIngredients.push(pk);
           }
         }
-        
-        const analysis = analyzeIngredientList(allIngredients);
+
+        let analysis = analyzeIngredientList(allIngredients);
         let status = getOverallStatus(analysis);
-        const productType = source === "openbeautyfacts" ? "cosmetic" as const : detectProductType(categories, p.product_name || "");
-        
+        const productType = source === "openbeautyfacts" ? ("cosmetic" as const) : detectProductType(categories, p.product_name || "");
+
+        // If ingredient data is missing/weak, try multilingual "naturally Halal" product-name matching
+        const naturallyHalal = detectNaturallyHalalProduct(p.product_name || "", categories);
+        const ingredientDataWeak =
+          ingredients.length === 0 ||
+          (analysis.length > 0 && analysis.every(a => a.status === "unknown") && analysis.length <= 2);
+
+        let confidence: ProductResult["confidence"] = ingredients.length > 3 ? "analysis-based" : "low";
+        let appliedNaturallyHalal = false;
+
+        if (status === "mushbooh" && ingredientDataWeak && naturallyHalal) {
+          status = "halal";
+          confidence = "high";
+          appliedNaturallyHalal = true;
+          analysis = [{ ingredient: naturallyHalal.label, info: null, status: "halal" }, ...analysis];
+        }
+
         const isAlcohol = detectAlcoholFromMetadata(p.product_name || "", categories);
-        if (isAlcohol) status = "haram";
-        
+        if (isAlcohol) {
+          status = "haram";
+          confidence = "high";
+        }
+
         const summary = isAlcohol
           ? `This is an alcoholic product. Alcohol (khamr) is clearly Haram in Islam. Not suitable for Muslim consumption.`
-          : generateSummary(analysis, status, productType);
-        
+          : appliedNaturallyHalal && naturallyHalal
+            ? `Likely single-ingredient ${naturallyHalal.label} (matched "${naturallyHalal.matchedKeyword}"). Ingredients list is missing/unclear; classified as Halal. Always verify certification for full assurance.`
+            : generateSummary(analysis, status, productType);
+
         return {
           id: p.code,
           barcode: p.code,
@@ -216,7 +310,7 @@ async function _searchNameFromAPI(apiBase: string, query: string, page: number, 
           ingredientsText,
           status,
           summary,
-          confidence: isAlcohol ? "high" : (ingredients.length > 3 ? "analysis-based" : "low"),
+          confidence,
           analysis,
           source,
           productType,
@@ -285,7 +379,9 @@ export const DEFAULT_SETTINGS: ScannerSettings = {
 export function getHistory(): ScanHistoryItem[] {
   try {
     return JSON.parse(localStorage.getItem(HISTORY_KEY) || "[]");
-  } catch { return []; }
+  } catch {
+    return [];
+  }
 }
 export function addToHistory(item: ScanHistoryItem) {
   const history = getHistory();
@@ -294,7 +390,9 @@ export function addToHistory(item: ScanHistoryItem) {
   filtered.unshift(item);
   localStorage.setItem(HISTORY_KEY, JSON.stringify(filtered.slice(0, 500)));
 }
-export function clearHistory() { localStorage.removeItem(HISTORY_KEY); }
+export function clearHistory() {
+  localStorage.removeItem(HISTORY_KEY);
+}
 export function removeFromHistory(barcode: string) {
   const history = getHistory().filter(h => h.product.barcode !== barcode);
   localStorage.setItem(HISTORY_KEY, JSON.stringify(history));
@@ -303,7 +401,9 @@ export function removeFromHistory(barcode: string) {
 export function getFavorites(): FavoriteItem[] {
   try {
     return JSON.parse(localStorage.getItem(FAVORITES_KEY) || "[]");
-  } catch { return []; }
+  } catch {
+    return [];
+  }
 }
 export function addToFavorites(item: FavoriteItem) {
   const favs = getFavorites();
@@ -320,14 +420,16 @@ export function isFavorite(barcode: string): boolean {
   return getFavorites().some(f => f.product.barcode === barcode);
 }
 export function updateFavoriteNote(barcode: string, note: string) {
-  const favs = getFavorites().map(f => f.product.barcode === barcode ? { ...f, note } : f);
+  const favs = getFavorites().map(f => (f.product.barcode === barcode ? { ...f, note } : f));
   localStorage.setItem(FAVORITES_KEY, JSON.stringify(favs));
 }
 
 export function getSettings(): ScannerSettings {
   try {
     return { ...DEFAULT_SETTINGS, ...JSON.parse(localStorage.getItem(SETTINGS_KEY) || "{}") };
-  } catch { return DEFAULT_SETTINGS; }
+  } catch {
+    return DEFAULT_SETTINGS;
+  }
 }
 export function saveSettings(settings: ScannerSettings) {
   localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings));
