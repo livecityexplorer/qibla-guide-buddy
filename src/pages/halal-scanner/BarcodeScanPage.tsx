@@ -1,9 +1,10 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { ArrowLeft, Camera, ScanLine, Keyboard, Clipboard, Loader2, CheckCircle, XCircle, AlertTriangle, HelpCircle, FlashlightOff, Flashlight } from "lucide-react";
+import { ArrowLeft, Camera, ScanLine, Keyboard, Clipboard, Loader2, CheckCircle, XCircle, AlertTriangle, HelpCircle } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { searchByBarcode, addToHistory, getSettings } from "@/services/halalScannerService";
 import type { ProductResult } from "@/services/halalScannerService";
+import LiveBarcodeScanner from "@/components/barcode/LiveBarcodeScanner";
 
 const statusConfig = {
   halal: { icon: CheckCircle, label: "HALAL ✅", bg: "bg-emerald-mid/10", text: "text-emerald-mid", border: "border-emerald-mid/30" },

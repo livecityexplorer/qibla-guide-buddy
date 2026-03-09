@@ -3,12 +3,12 @@ import { motion, AnimatePresence } from "framer-motion";
 import {
   ArrowLeft, Camera, Search, ScanLine, CheckCircle, XCircle, AlertTriangle,
   HelpCircle, Loader2, ChevronRight, BookOpen, GraduationCap, Shield,
-  Sparkles, Star, Zap, Globe, Clock, Heart, X, FlashlightOff, Flashlight,
-  SwitchCamera, Keyboard
+  Sparkles, Star, Zap, Globe, Clock, Heart, X, Keyboard
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { searchByName, searchByBarcode, addToHistory, getSettings, getHistory, getFavorites, type ProductResult } from "@/services/halalScannerService";
 import { getTodaysIngredient, getLearningProgress } from "@/data/halalEducation";
+import LiveBarcodeScanner from "@/components/barcode/LiveBarcodeScanner";
 
 const statusConfig = {
   halal: { icon: CheckCircle, label: "Halal ✅", bgClass: "bg-emerald-mid/10", textClass: "text-emerald-mid", borderClass: "border-emerald-mid/30" },
