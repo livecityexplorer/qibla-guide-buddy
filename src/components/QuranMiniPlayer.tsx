@@ -80,8 +80,8 @@ const QuranMiniPlayer = () => {
               >
                 {isPlaying ? <Pause size={16} className="text-primary-foreground" /> : <Play size={16} className="text-primary-foreground" />}
               </button>
-              <button onClick={stop} className="p-1.5 rounded-full hover:bg-secondary">
-                <X size={14} className="text-muted-foreground" />
+              <button onClick={stop} className="p-2.5 rounded-full hover:bg-destructive/10 active:bg-destructive/20 transition-colors">
+                <X size={18} className="text-muted-foreground" />
               </button>
             </div>
           </div>
