@@ -177,7 +177,7 @@ export function QuranPlayerProvider({ children }: { children: React.ReactNode })
       navigator.mediaSession.setActionHandler("stop", () => {
         audio.pause();
         audio.src = "";
-        setState((s) => ({ ...s, isPlaying: false, currentAyah: null, currentSurahNumber: null, playlist: [], playlistIndex: 0, verseTimings: [] }));
+        setState((s) => ({ ...s, isPlaying: false, currentAyah: null, currentSurahName: "", currentSurahNumber: null, playlist: [], playlistIndex: 0, verseTimings: [] }));
         verseTimingsRef.current = [];
         playlistRef.current = [];
         releaseWakeLock();
