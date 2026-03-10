@@ -9,6 +9,7 @@ import {
   Globe,
   Loader2,
   BookmarkCheck,
+  Bookmark,
   Minus,
   Plus,
   ChevronRight,
@@ -157,6 +158,19 @@ const QuranPage = () => {
     player.playAll(arabicData.ayahs, arabicData.englishName, arabicData.number);
   };
 
+  const handleBookmarkAyah = (ayah: Ayah, index: number) => {
+    if (!arabicData) return;
+    const bm: QuranBookmark = {
+      surahNumber: arabicData.number,
+      surahName: arabicData.englishName,
+      ayahIndex: index,
+      ayahNumber: ayah.numberInSurah,
+      timestamp: Date.now(),
+    };
+    saveBookmark(bm);
+    setBookmark(bm);
+  };
+
   const handleAyahVisible = useCallback(
     (ayah: Ayah, index: number) => {
       if (!arabicData) return;
@@ -187,7 +201,6 @@ const QuranPage = () => {
     if (!loading && arabicData && pendingScrollRef.current !== null) {
       const idx = pendingScrollRef.current;
       pendingScrollRef.current = null;
-      // Wait for DOM to render ayahs
       requestAnimationFrame(() => {
         setTimeout(() => {
           const el = ayahRefs.current.get(idx);
@@ -221,34 +234,33 @@ const QuranPage = () => {
     <div className="min-h-screen pb-20">
       {/* ── Enhanced Hero Header ── */}
       <div className="relative overflow-hidden">
-        {/* Layered gradient background */}
         <div className="absolute inset-0 gradient-emerald" />
         <div className="absolute inset-0 bg-gradient-to-b from-black/20 via-transparent to-black/10" />
         <div className="absolute inset-0 islamic-pattern opacity-80" />
-        {/* Decorative geometric circles */}
         <div className="absolute -top-16 -right-16 w-48 h-48 rounded-full border border-primary-foreground/10" />
         <div className="absolute -top-8 -right-8 w-32 h-32 rounded-full border border-primary-foreground/5" />
         <div className="absolute bottom-0 left-0 w-24 h-24 rounded-full border border-primary-foreground/5 -mb-12 -ml-12" />
 
         <div className="relative px-4 pb-8 pt-12">
           <div className="flex items-center justify-between mb-6">
+            {/* BIGGER Back button */}
             <button
               onClick={() => (selectedSurah ? setSelectedSurah(null) : navigate("/"))}
-              className="flex items-center gap-2 text-primary-foreground/80 hover:text-primary-foreground transition-colors"
+              className="flex items-center gap-2 rounded-xl bg-primary-foreground/20 backdrop-blur-sm border border-primary-foreground/20 px-4 py-2.5 text-primary-foreground hover:bg-primary-foreground/30 transition-colors active:scale-95"
             >
-              <ArrowLeft size={20} />
-              <span className="text-sm font-medium">Back</span>
+              <ArrowLeft size={22} />
+              <span className="text-sm font-semibold">Back</span>
             </button>
 
-            {/* Reciter selector */}
+            {/* BIGGER Reciter selector - lighter colors */}
             <Select value={player.reciter} onValueChange={player.setReciter}>
-              <SelectTrigger className="w-auto max-w-[160px] h-8 text-xs bg-primary-foreground/15 backdrop-blur-sm border border-primary-foreground/20 text-primary-foreground rounded-full px-3">
-                <Volume2 size={12} className="mr-1.5" />
+              <SelectTrigger className="w-auto max-w-[200px] h-11 text-sm bg-primary-foreground/25 backdrop-blur-sm border-2 border-primary-foreground/30 text-primary-foreground rounded-xl px-4 font-medium">
+                <Volume2 size={18} className="mr-2" />
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
                 {RECITERS.map((r) => (
-                  <SelectItem key={r.id} value={r.id} className="text-xs">
+                  <SelectItem key={r.id} value={r.id} className="text-sm py-3">
                     {r.label}
                   </SelectItem>
                 ))}
@@ -256,7 +268,7 @@ const QuranPage = () => {
             </Select>
           </div>
 
-          {/* Title area with decorative Bismillah */}
+          {/* Title area */}
           <div className="text-center">
             <p className="text-primary-foreground/40 text-2xl font-arabic mb-1">﷽</p>
             <h1 className="text-3xl font-bold text-primary-foreground tracking-tight">
@@ -271,7 +283,6 @@ const QuranPage = () => {
           </div>
         </div>
 
-        {/* Curved bottom edge */}
         <div className="absolute bottom-0 left-0 right-0 h-4 bg-background rounded-t-[24px]" />
       </div>
 
@@ -291,30 +302,27 @@ const QuranPage = () => {
               onClick={handleResumeBookmark}
               className="group mb-5 w-full relative overflow-hidden rounded-2xl shadow-emerald active:scale-[0.97] transition-transform"
             >
-              {/* Background layers */}
               <div className="absolute inset-0 gradient-emerald" />
               <div className="absolute inset-0 islamic-pattern opacity-40" />
               <div className="absolute -top-8 -right-8 w-28 h-28 rounded-full border border-primary-foreground/10" />
 
               <div className="relative flex items-center gap-4 p-5">
-                {/* Icon */}
-                <div className="h-12 w-12 rounded-xl bg-primary-foreground/20 backdrop-blur-sm flex items-center justify-center shrink-0 border border-primary-foreground/10">
-                  <BookmarkCheck size={22} className="text-primary-foreground" />
+                <div className="h-14 w-14 rounded-xl bg-primary-foreground/20 backdrop-blur-sm flex items-center justify-center shrink-0 border border-primary-foreground/10">
+                  <BookmarkCheck size={26} className="text-primary-foreground" />
                 </div>
 
                 <div className="flex-1 min-w-0 text-left">
-                  <p className="text-base font-bold text-primary-foreground">Continue Reading</p>
+                  <p className="text-lg font-bold text-primary-foreground">Continue Reading</p>
                   <p className="text-sm text-primary-foreground/70 truncate mt-0.5">
                     {bookmark.surahName} · Ayah {bookmark.ayahNumber}
                   </p>
-                  <p className="text-[10px] text-primary-foreground/40 mt-1">
+                  <p className="text-[11px] text-primary-foreground/40 mt-1">
                     Last read {new Date(bookmark.timestamp).toLocaleDateString()}
                   </p>
                 </div>
 
-                {/* Arrow */}
-                <div className="h-9 w-9 rounded-full bg-primary-foreground/20 flex items-center justify-center shrink-0 group-hover:bg-primary-foreground/30 transition-colors">
-                  <ChevronRight size={18} className="text-primary-foreground" />
+                <div className="h-11 w-11 rounded-full bg-primary-foreground/20 flex items-center justify-center shrink-0 group-hover:bg-primary-foreground/30 transition-colors">
+                  <ChevronRight size={22} className="text-primary-foreground" />
                 </div>
               </div>
             </motion.button>
@@ -334,18 +342,18 @@ const QuranPage = () => {
             />
           </div>
 
-          {/* Translation selector */}
-          <div className="mb-5 flex items-center gap-2 bg-card rounded-xl border border-border p-2.5 shadow-sm">
-            <div className="h-8 w-8 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
-              <Globe size={14} className="text-primary" />
+          {/* BIGGER Translation selector */}
+          <div className="mb-5 flex items-center gap-3 bg-card rounded-xl border border-border p-3 shadow-sm">
+            <div className="h-11 w-11 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
+              <Globe size={20} className="text-primary" />
             </div>
             <Select value={translationEdition} onValueChange={handleTranslationChange}>
-              <SelectTrigger className="w-full h-9 text-xs border-0 bg-transparent shadow-none">
+              <SelectTrigger className="w-full h-11 text-sm border-0 bg-transparent shadow-none font-medium">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent className="max-h-60">
                 {TRANSLATION_EDITIONS.map((e) => (
-                  <SelectItem key={e.id} value={e.id} className="text-xs">
+                  <SelectItem key={e.id} value={e.id} className="text-sm py-2.5">
                     {e.label}
                   </SelectItem>
                 ))}
@@ -376,7 +384,6 @@ const QuranPage = () => {
                   onClick={() => setSelectedSurah(surah.number)}
                   className="flex w-full items-center gap-3 rounded-2xl bg-card p-4 text-left shadow-sm border border-border/50 transition-all hover:shadow-md hover:border-primary/20 active:scale-[0.98]"
                 >
-                  {/* Surah number diamond */}
                   <div className="relative h-11 w-11 shrink-0">
                     <div className="absolute inset-0 rotate-45 rounded-lg gradient-emerald shadow-emerald" />
                     <span className="absolute inset-0 flex items-center justify-center text-sm font-bold text-primary-foreground">
@@ -411,12 +418,12 @@ const QuranPage = () => {
             </div>
           ) : arabicData ? (
             <>
-              {/* Back to surah list button */}
+              {/* BIGGER Back to surah list button */}
               <button
                 onClick={() => setSelectedSurah(null)}
-                className="flex items-center gap-2 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors mb-3"
+                className="flex items-center gap-2 rounded-xl bg-secondary px-4 py-3 text-sm font-semibold text-foreground hover:bg-secondary/80 transition-colors mb-3 active:scale-95"
               >
-                <ArrowLeft size={18} />
+                <ArrowLeft size={22} />
                 Back to Surah List
               </button>
 
@@ -448,25 +455,28 @@ const QuranPage = () => {
                       {arabicData.revelationType}
                     </span>
                   </div>
+                  {/* BIGGER Play Entire Surah button */}
                   <button
                     onClick={handlePlayAll}
-                    className="mt-4 inline-flex items-center gap-2 rounded-full bg-primary-foreground/20 backdrop-blur-sm border border-primary-foreground/20 px-5 py-2.5 text-sm font-semibold text-primary-foreground hover:bg-primary-foreground/30 transition-colors active:scale-95"
+                    className="mt-4 inline-flex items-center gap-3 rounded-full bg-primary-foreground/20 backdrop-blur-sm border-2 border-primary-foreground/30 px-7 py-3.5 text-base font-bold text-primary-foreground hover:bg-primary-foreground/30 transition-colors active:scale-95"
                   >
-                    <Play size={14} /> Play Entire Surah
+                    <Play size={22} /> Play Entire Surah
                   </button>
                 </div>
               </div>
 
-              {/* Text Size + Translation selector */}
-              <div className="flex items-center gap-2">
-                <Globe size={14} className="text-muted-foreground shrink-0" />
+              {/* BIGGER Translation selector inside reading view */}
+              <div className="flex items-center gap-3 bg-card rounded-xl border border-border p-3">
+                <div className="h-11 w-11 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
+                  <Globe size={20} className="text-primary" />
+                </div>
                 <Select value={translationEdition} onValueChange={handleTranslationChange}>
-                  <SelectTrigger className="w-full h-9 text-xs">
+                  <SelectTrigger className="w-full h-11 text-sm font-medium">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent className="max-h-60">
                     {TRANSLATION_EDITIONS.map((e) => (
-                      <SelectItem key={e.id} value={e.id} className="text-xs">
+                      <SelectItem key={e.id} value={e.id} className="text-sm py-2.5">
                         {e.label}
                       </SelectItem>
                     ))}
@@ -474,39 +484,39 @@ const QuranPage = () => {
                 </Select>
               </div>
 
-              {/* Text Size Controls */}
-              <div className="flex items-center gap-4 rounded-xl bg-card p-3 border border-border">
+              {/* BIGGER Text Size Controls */}
+              <div className="flex items-center gap-4 rounded-xl bg-card p-4 border border-border">
                 <div className="flex-1 flex items-center gap-2">
-                  <span className="text-xs text-muted-foreground shrink-0">Arabic</span>
+                  <span className="text-sm text-muted-foreground shrink-0 font-medium">Arabic</span>
                   <button
                     onClick={() => adjustSize("arabic", -2)}
-                    className="h-7 w-7 rounded-full bg-secondary flex items-center justify-center"
+                    className="h-10 w-10 rounded-full bg-secondary flex items-center justify-center active:scale-90 transition-transform"
                   >
-                    <Minus size={12} />
+                    <Minus size={18} />
                   </button>
-                  <span className="text-xs font-medium text-foreground w-6 text-center">{arabicSize}</span>
+                  <span className="text-sm font-bold text-foreground w-8 text-center">{arabicSize}</span>
                   <button
                     onClick={() => adjustSize("arabic", 2)}
-                    className="h-7 w-7 rounded-full bg-secondary flex items-center justify-center"
+                    className="h-10 w-10 rounded-full bg-secondary flex items-center justify-center active:scale-90 transition-transform"
                   >
-                    <Plus size={12} />
+                    <Plus size={18} />
                   </button>
                 </div>
-                <div className="w-px h-6 bg-border" />
+                <div className="w-px h-8 bg-border" />
                 <div className="flex-1 flex items-center gap-2">
-                  <span className="text-xs text-muted-foreground shrink-0">Trans</span>
+                  <span className="text-sm text-muted-foreground shrink-0 font-medium">Trans</span>
                   <button
                     onClick={() => adjustSize("trans", -1)}
-                    className="h-7 w-7 rounded-full bg-secondary flex items-center justify-center"
+                    className="h-10 w-10 rounded-full bg-secondary flex items-center justify-center active:scale-90 transition-transform"
                   >
-                    <Minus size={12} />
+                    <Minus size={18} />
                   </button>
-                  <span className="text-xs font-medium text-foreground w-6 text-center">{translationSize}</span>
+                  <span className="text-sm font-bold text-foreground w-8 text-center">{translationSize}</span>
                   <button
                     onClick={() => adjustSize("trans", 1)}
-                    className="h-7 w-7 rounded-full bg-secondary flex items-center justify-center"
+                    className="h-10 w-10 rounded-full bg-secondary flex items-center justify-center active:scale-90 transition-transform"
                   >
-                    <Plus size={12} />
+                    <Plus size={18} />
                   </button>
                 </div>
               </div>
@@ -520,6 +530,9 @@ const QuranPage = () => {
                       player.currentSurahNumber === arabicData.number &&
                       player.isPlaying
                     : player.currentAyah?.number === ayah.number;
+                const isBookmarked =
+                  bookmark?.surahNumber === arabicData.number &&
+                  bookmark?.ayahIndex === i;
 
                 return (
                   <div
@@ -534,7 +547,7 @@ const QuranPage = () => {
                   >
                     <div className="flex items-center justify-between mb-3">
                       <span
-                        className={`flex h-7 w-7 items-center justify-center rounded-full text-xs font-bold ${
+                        className={`flex h-9 w-9 items-center justify-center rounded-full text-sm font-bold ${
                           isCurrentlyPlaying
                             ? "bg-primary text-primary-foreground"
                             : "bg-secondary text-secondary-foreground"
@@ -542,33 +555,54 @@ const QuranPage = () => {
                       >
                         {ayah.numberInSurah}
                       </span>
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handlePlayAyah(ayah, i);
-                        }}
-                        className={`p-2 rounded-full transition-colors ${
-                          isCurrentlyPlaying
-                            ? "gradient-emerald"
-                            : "bg-secondary hover:bg-secondary/80"
-                        }`}
-                      >
-                        {isCurrentlyPlaying && player.isPlaying ? (
-                          <Pause
-                            size={14}
-                            className={
-                              isCurrentlyPlaying ? "text-primary-foreground" : "text-foreground"
-                            }
-                          />
-                        ) : (
-                          <Play
-                            size={14}
-                            className={
-                              isCurrentlyPlaying ? "text-primary-foreground" : "text-foreground"
-                            }
-                          />
-                        )}
-                      </button>
+                      <div className="flex items-center gap-2">
+                        {/* BIGGER Bookmark button */}
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleBookmarkAyah(ayah, i);
+                          }}
+                          className={`p-3 rounded-full transition-colors ${
+                            isBookmarked
+                              ? "bg-primary/20 text-primary"
+                              : "bg-secondary hover:bg-secondary/80 text-muted-foreground"
+                          }`}
+                        >
+                          {isBookmarked ? (
+                            <BookmarkCheck size={20} />
+                          ) : (
+                            <Bookmark size={20} />
+                          )}
+                        </button>
+                        {/* BIGGER Play button */}
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handlePlayAyah(ayah, i);
+                          }}
+                          className={`p-3 rounded-full transition-colors ${
+                            isCurrentlyPlaying
+                              ? "gradient-emerald"
+                              : "bg-secondary hover:bg-secondary/80"
+                          }`}
+                        >
+                          {isCurrentlyPlaying && player.isPlaying ? (
+                            <Pause
+                              size={20}
+                              className={
+                                isCurrentlyPlaying ? "text-primary-foreground" : "text-foreground"
+                              }
+                            />
+                          ) : (
+                            <Play
+                              size={20}
+                              className={
+                                isCurrentlyPlaying ? "text-primary-foreground" : "text-foreground"
+                              }
+                            />
+                          )}
+                        </button>
+                      </div>
                     </div>
                     <p
                       className="text-right leading-[2.2] font-arabic text-foreground"
