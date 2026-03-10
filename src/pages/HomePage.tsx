@@ -5,14 +5,7 @@ import { useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import heroImage from "@/assets/hero-mosque.jpg";
 import { getDailyHadith } from "@/services/hadithService";
-
-const PRAYER_TIMES = [
-  { nameKey: "prayer.fajr", time: "05:23", icon: "🌅" },
-  { nameKey: "prayer.dhuhr", time: "12:30", icon: "☀️" },
-  { nameKey: "prayer.asr", time: "15:45", icon: "🌤" },
-  { nameKey: "prayer.maghrib", time: "18:12", icon: "🌅" },
-  { nameKey: "prayer.isha", time: "19:42", icon: "🌙" },
-];
+import { getCachedPrayerTimes, getPrayerTimes, type PrayerTimesData } from "@/services/prayerTimesService";
 
 const DHIKR_OPTIONS = [
   { key: "subhanAllah", arabic: "سبحان الله", target: 33 },
@@ -54,6 +47,49 @@ function getCountdown(targetTime: string): string {
   return `${hours.toString().padStart(2, "0")}:${mins.toString().padStart(2, "0")}:${secs.toString().padStart(2, "0")}`;
 }
 
+const PRAYER_ICONS: Record<string, string> = {
+  Fajr: "🌅",
+  Sunrise: "🌄",
+  Dhuhr: "☀️",
+  Asr: "🌤",
+  Maghrib: "🌅",
+  Isha: "🌙",
+};
+
+const PRAYER_NAME_KEYS: Record<string, string> = {
+  Fajr: "prayer.fajr",
+  Dhuhr: "prayer.dhuhr",
+  Asr: "prayer.asr",
+  Maghrib: "prayer.maghrib",
+  Isha: "prayer.isha",
+};
+
+const DISPLAY_PRAYERS = ["Fajr", "Dhuhr", "Asr", "Maghrib", "Isha"] as const;
+
+function getWeatherDescription(code: number): string {
+  if (code === 0) return "Clear sky";
+  if (code <= 3) return "Partly cloudy";
+  if (code <= 48) return "Foggy";
+  if (code <= 57) return "Drizzle";
+  if (code <= 65) return "Rain";
+  if (code <= 67) return "Freezing rain";
+  if (code <= 77) return "Snow";
+  if (code <= 82) return "Rain showers";
+  if (code <= 86) return "Snow showers";
+  if (code <= 99) return "Thunderstorm";
+  return "Unknown";
+}
+
+function getWeatherIcon(code: number): string {
+  if (code === 0) return "☀️";
+  if (code <= 3) return "⛅";
+  if (code <= 48) return "🌫️";
+  if (code <= 67) return "🌧️";
+  if (code <= 77) return "🌨️";
+  if (code <= 86) return "❄️";
+  return "⛈️";
+}
+
 const HomePage = () => {
   const navigate = useNavigate();
   const { t } = useTranslation();
@@ -67,6 +103,7 @@ const HomePage = () => {
   const [selectedDhikr, setSelectedDhikr] = useState(0);
   const [dhikrCount, setDhikrCount] = useState(0);
   const [countdown, setCountdown] = useState("");
+  const [prayerTimes, setPrayerTimes] = useState<PrayerTimesData | null>(null);
 
   const QUICK_ACTIONS = [
     { label: t("home.prayerTimes"), icon: Clock, path: "/prayer" },
@@ -79,18 +116,46 @@ const HomePage = () => {
     { label: t("nav.hadith"), icon: Moon, path: "/hadith" },
   ];
 
+  // Load prayer times from cache first, then fetch if needed (once per day)
+  useEffect(() => {
+    const cached = getCachedPrayerTimes();
+    if (cached) {
+      setPrayerTimes(cached.times);
+      return;
+    }
+    // Only fetch if no cache for today
+    getPrayerTimes().then((result) => {
+      setPrayerTimes(result.times);
+    }).catch(() => {});
+  }, []);
+
+  const prayerList = useMemo(() => {
+    if (!prayerTimes) return DISPLAY_PRAYERS.map((key) => ({
+      nameKey: PRAYER_NAME_KEYS[key],
+      time: "--:--",
+      icon: PRAYER_ICONS[key],
+    }));
+    return DISPLAY_PRAYERS.map((key) => ({
+      nameKey: PRAYER_NAME_KEYS[key],
+      time: prayerTimes[key],
+      icon: PRAYER_ICONS[key],
+    }));
+  }, [prayerTimes]);
+
   const nextPrayer = useMemo(() => {
     const now = new Date();
     const currentMinutes = now.getHours() * 60 + now.getMinutes();
-    for (const p of PRAYER_TIMES) {
+    for (const p of prayerList) {
+      if (p.time === "--:--") continue;
       const [h, m] = p.time.split(":").map(Number);
       if (h * 60 + m > currentMinutes) return p;
     }
-    return PRAYER_TIMES[0];
-  }, []);
+    return prayerList[0];
+  }, [prayerList]);
 
   // Countdown timer
   useEffect(() => {
+    if (nextPrayer.time === "--:--") return;
     setCountdown(getCountdown(nextPrayer.time));
     const interval = setInterval(() => {
       setCountdown(getCountdown(nextPrayer.time));
@@ -127,7 +192,6 @@ const HomePage = () => {
         try {
           let resolvedLocation = "";
 
-          // Primary: OpenStreetMap Nominatim (more reliable in browser for city/district)
           try {
             const nameRes = await fetch(
               `https://nominatim.openstreetmap.org/reverse?lat=${latitude}&lon=${longitude}&format=json&accept-language=en`
@@ -143,7 +207,6 @@ const HomePage = () => {
             }
           } catch {}
 
-          // Fallback: BigDataCloud reverse geocoder
           if (!resolvedLocation) {
             const fallbackRes = await fetch(
               `https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${latitude}&longitude=${longitude}&localityLanguage=en`
@@ -314,14 +377,14 @@ const HomePage = () => {
           </div>
         </motion.div>
 
-        {/* Today's Prayers */}
+        {/* Today's Prayers - now using real API times */}
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.5 }}>
           <h3 className="mb-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground">{t("home.todaysPrayers")}</h3>
           <div className="rounded-2xl glass-card-strong p-1">
-            {PRAYER_TIMES.map((p, i) => (
+            {prayerList.map((p, i) => (
               <div key={p.nameKey} className={`flex items-center justify-between py-3 px-3 rounded-xl transition-colors ${
                 p.nameKey === nextPrayer.nameKey ? "bg-primary/10 border-glow-gold" : ""
-              } ${i < PRAYER_TIMES.length - 1 && p.nameKey !== nextPrayer.nameKey ? "border-b border-border/50" : ""}`}>
+              } ${i < prayerList.length - 1 && p.nameKey !== nextPrayer.nameKey ? "border-b border-border/50" : ""}`}>
                 <div className="flex items-center gap-3">
                   <span className="text-lg">{p.icon}</span>
                   <span className={`font-medium ${p.nameKey === nextPrayer.nameKey ? "text-primary" : "text-foreground"}`}>{t(p.nameKey)}</span>
@@ -343,7 +406,7 @@ const HomePage = () => {
                   <div className="flex h-16 w-16 items-center justify-center rounded-full bg-primary/10 group-hover:bg-primary/20 transition-colors">
                     <Icon size={30} className="text-primary" />
                   </div>
-                  <span className="text-sm font-medium text-muted-foreground group-hover:text-foreground transition-colors text-center leading-tight">{action.label}</span>
+                  <span className="text-sm font-medium text-foreground text-center leading-tight">{action.label}</span>
                 </button>
               );
             })}
@@ -353,31 +416,5 @@ const HomePage = () => {
     </div>
   );
 };
-
-function getWeatherDescription(code: number): string {
-  if (code === 0) return "Clear sky";
-  if (code <= 3) return "Partly cloudy";
-  if (code <= 48) return "Foggy";
-  if (code <= 57) return "Drizzle";
-  if (code <= 67) return "Rain";
-  if (code <= 77) return "Snow";
-  if (code <= 82) return "Rain showers";
-  if (code <= 86) return "Snow showers";
-  if (code <= 99) return "Thunderstorm";
-  return "Unknown";
-}
-
-function getWeatherIcon(code: number): string {
-  if (code === 0) return "☀️";
-  if (code <= 3) return "⛅";
-  if (code <= 48) return "🌫️";
-  if (code <= 57) return "🌧️";
-  if (code <= 67) return "🌧️";
-  if (code <= 77) return "❄️";
-  if (code <= 82) return "🌦️";
-  if (code <= 86) return "🌨️";
-  if (code <= 99) return "⛈️";
-  return "🌡️";
-}
 
 export default HomePage;
