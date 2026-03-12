@@ -1,6 +1,6 @@
 import { useMemo, useState, useEffect, useCallback } from "react";
 import { motion } from "framer-motion";
-import { Clock, BookOpen, Compass, ScanLine, MapPin, Moon, Star, ShieldAlert, CloudSun, MapPinned, Calendar, RotateCcw } from "lucide-react";
+import { Clock, BookOpen, Compass, ScanLine, MapPin, Moon, Star, ShieldAlert, CloudSun, MapPinned, Calendar, RotateCcw, ChevronRight } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import heroImage from "@/assets/hero-mosque.jpg";
