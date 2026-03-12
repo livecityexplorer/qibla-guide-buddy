@@ -106,14 +106,14 @@ const HomePage = () => {
   const [prayerTimes, setPrayerTimes] = useState<PrayerTimesData | null>(null);
 
   const QUICK_ACTIONS = [
-    { label: t("home.prayerTimes"), icon: Clock, path: "/prayer" },
-    { label: t("nav.qibla"), icon: Compass, path: "/qibla" },
-    { label: t("nav.quran"), icon: BookOpen, path: "/quran" },
-    { label: t("nav.halalScanner"), icon: ScanLine, path: "/scanner" },
-    { label: t("nav.ramadan"), icon: Star, path: "/ramadan" },
-    { label: t("nav.boycott"), icon: ShieldAlert, path: "/boycott" },
-    { label: t("nav.nearby"), icon: MapPin, path: "/nearby" },
-    { label: t("nav.hadith"), icon: Moon, path: "/hadith" },
+    { label: t("home.prayerTimes"), icon: Clock, path: "/prayer", desc: t("more.prayerDesc", "View accurate prayer times for your location"), gradient: "from-emerald-800/80 to-emerald-600/60" },
+    { label: t("nav.qibla"), icon: Compass, path: "/qibla", desc: t("more.qiblaDesc", "Find the exact direction of the Kaaba in Makkah from wherever you are"), gradient: "from-emerald-900/80 to-emerald-700/60" },
+    { label: t("nav.quran"), icon: BookOpen, path: "/quran", desc: t("more.quranDesc", "Read and listen to the Holy Quran with translations"), gradient: "from-teal-800/80 to-teal-600/60" },
+    { label: t("nav.halalScanner"), icon: ScanLine, path: "/scanner", desc: t("more.halalDesc", "Scan barcodes to check Halal status of food products"), gradient: "from-emerald-800/80 to-green-600/60" },
+    { label: t("nav.ramadan"), icon: Star, path: "/ramadan", desc: t("more.ramadanDesc", "Ramadan schedule, Suhoor & Iftar times"), gradient: "from-amber-800/80 to-yellow-600/60" },
+    { label: t("nav.boycott"), icon: ShieldAlert, path: "/boycott", desc: t("more.boycottDesc", "Check and search boycott product directory"), gradient: "from-rose-800/80 to-pink-600/60" },
+    { label: t("nav.nearby"), icon: MapPin, path: "/nearby", desc: t("more.nearbyDesc", "Find nearby mosques and halal restaurants"), gradient: "from-slate-700/80 to-slate-500/60" },
+    { label: t("nav.hadith"), icon: Moon, path: "/hadith", desc: t("more.hadithDesc", "Sayings of the Prophet ﷺ from Bukhari, Muslim & more"), gradient: "from-purple-800/80 to-violet-500/60" },
   ];
 
   // Load prayer times from cache first, then fetch if needed (once per day)
