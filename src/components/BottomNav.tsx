@@ -19,12 +19,12 @@ const BottomNav = () => {
   ];
 
   const moreActions = [
-    { label: t("nav.halalScanner"), icon: ScanLine, path: "/scanner", desc: t("more.halalDesc") },
-    { label: t("nav.boycott"), icon: ShieldAlert, path: "/boycott", desc: t("more.boycottDesc") },
-    { label: t("nav.ramadan"), icon: Star, path: "/ramadan", desc: t("more.ramadanDesc") },
-    { label: t("nav.nearby"), icon: MapPin, path: "/nearby", desc: t("more.nearbyDesc") },
-    { label: t("nav.hadith"), icon: Moon, path: "/hadith", desc: t("more.hadithDesc") },
-    { label: t("nav.profile"), icon: User, path: "/profile", desc: t("more.profileDesc") },
+    { label: t("nav.halalScanner"), icon: ScanLine, path: "/scanner", desc: t("more.halalDesc"), gradient: "from-emerald-800/80 to-green-600/60" },
+    { label: t("nav.boycott"), icon: ShieldAlert, path: "/boycott", desc: t("more.boycottDesc"), gradient: "from-rose-800/80 to-pink-600/60" },
+    { label: t("nav.ramadan"), icon: Star, path: "/ramadan", desc: t("more.ramadanDesc"), gradient: "from-amber-800/80 to-yellow-600/60" },
+    { label: t("nav.nearby"), icon: MapPin, path: "/nearby", desc: t("more.nearbyDesc"), gradient: "from-slate-700/80 to-slate-500/60" },
+    { label: t("nav.hadith"), icon: Moon, path: "/hadith", desc: t("more.hadithDesc"), gradient: "from-purple-800/80 to-violet-500/60" },
+    { label: t("nav.profile"), icon: User, path: "/profile", desc: t("more.profileDesc"), gradient: "from-teal-800/80 to-cyan-500/60" },
   ];
 
   const isMoreActive = moreActions.some(a => location.pathname.startsWith(a.path));
