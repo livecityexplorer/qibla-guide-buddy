@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
-import { Home, Clock, Compass, BookOpen, MoreHorizontal, ScanLine, MapPin, Moon, Star, ShieldAlert, User } from "lucide-react";
+import { Home, Clock, Compass, BookOpen, MoreHorizontal, ScanLine, MapPin, Moon, Star, ShieldAlert, User, ChevronRight } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useTranslation } from "react-i18next";
 
@@ -19,12 +19,12 @@ const BottomNav = () => {
   ];
 
   const moreActions = [
-    { label: t("nav.halalScanner"), icon: ScanLine, path: "/scanner", desc: t("more.halalDesc") },
-    { label: t("nav.boycott"), icon: ShieldAlert, path: "/boycott", desc: t("more.boycottDesc") },
-    { label: t("nav.ramadan"), icon: Star, path: "/ramadan", desc: t("more.ramadanDesc") },
-    { label: t("nav.nearby"), icon: MapPin, path: "/nearby", desc: t("more.nearbyDesc") },
-    { label: t("nav.hadith"), icon: Moon, path: "/hadith", desc: t("more.hadithDesc") },
-    { label: t("nav.profile"), icon: User, path: "/profile", desc: t("more.profileDesc") },
+    { label: t("nav.halalScanner"), icon: ScanLine, path: "/scanner", desc: t("more.halalDesc"), gradient: "from-emerald-800/80 to-green-600/60" },
+    { label: t("nav.boycott"), icon: ShieldAlert, path: "/boycott", desc: t("more.boycottDesc"), gradient: "from-rose-800/80 to-pink-600/60" },
+    { label: t("nav.ramadan"), icon: Star, path: "/ramadan", desc: t("more.ramadanDesc"), gradient: "from-amber-800/80 to-yellow-600/60" },
+    { label: t("nav.nearby"), icon: MapPin, path: "/nearby", desc: t("more.nearbyDesc"), gradient: "from-slate-700/80 to-slate-500/60" },
+    { label: t("nav.hadith"), icon: Moon, path: "/hadith", desc: t("more.hadithDesc"), gradient: "from-purple-800/80 to-violet-500/60" },
+    { label: t("nav.profile"), icon: User, path: "/profile", desc: t("more.profileDesc"), gradient: "from-teal-800/80 to-cyan-500/60" },
   ];
 
   const isMoreActive = moreActions.some(a => location.pathname.startsWith(a.path));
@@ -39,21 +39,21 @@ const BottomNav = () => {
 
       <AnimatePresence>
         {showMore && (
-          <motion.div initial={{ opacity: 0, y: 80 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 80 }} transition={{ type: "spring", stiffness: 400, damping: 30 }} className="fixed bottom-16 left-3 right-3 z-50 rounded-2xl glass-card-strong shadow-luxury p-5">
+          <motion.div initial={{ opacity: 0, y: 80 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 80 }} transition={{ type: "spring", stiffness: 400, damping: 30 }} className="fixed bottom-16 left-3 right-3 z-50 rounded-2xl glass-card-strong shadow-luxury p-5 max-h-[70vh] overflow-y-auto">
             <p className="text-sm font-semibold uppercase tracking-wider text-primary mb-4">{t("common.quickActions")}</p>
-            <div className="grid grid-cols-3 gap-4">
+            <div className="flex flex-col gap-3">
               {moreActions.map((action) => {
                 const Icon = action.icon;
-                const active = location.pathname.startsWith(action.path);
                 return (
-                  <button key={action.path} onClick={() => { setShowMore(false); navigate(action.path); }} className={`flex flex-col items-center gap-2.5 rounded-2xl p-4 transition-all active:scale-95 border ${active ? "border-primary/30 bg-primary/10 glow-gold" : "border-primary/10 bg-secondary/30 hover:bg-primary/5 hover:border-primary/20"}`}>
-                    <div className={`flex h-16 w-16 items-center justify-center rounded-2xl ${active ? "gradient-gold glow-gold" : "bg-primary/10"}`}>
-                      <Icon size={30} className={active ? "text-primary-foreground" : "text-primary"} />
+                  <button key={action.path} onClick={() => { setShowMore(false); navigate(action.path); }} className={`group relative flex items-center gap-4 rounded-2xl bg-gradient-to-r ${action.gradient} border border-white/10 p-4 transition-all hover:scale-[1.01] active:scale-[0.98] overflow-hidden`}>
+                    <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-white/10 backdrop-blur-sm">
+                      <Icon size={28} className="text-white/90" />
                     </div>
-                    <div className="flex flex-col items-center gap-0.5">
-                      <span className={`text-sm font-semibold ${active ? "text-primary" : "text-foreground"}`}>{action.label}</span>
-                      <span className="text-[11px] text-muted-foreground text-center leading-tight">{action.desc}</span>
+                    <div className="flex-1 text-left">
+                      <h4 className="text-base font-bold text-white">{action.label}</h4>
+                      <p className="text-xs text-white/60 leading-snug mt-0.5">{action.desc}</p>
                     </div>
+                    <ChevronRight size={20} className="text-white/40 shrink-0" />
                   </button>
                 );
               })}

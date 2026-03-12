@@ -1,6 +1,6 @@
 import { useMemo, useState, useEffect, useCallback } from "react";
 import { motion } from "framer-motion";
-import { Clock, BookOpen, Compass, ScanLine, MapPin, Moon, Star, ShieldAlert, CloudSun, MapPinned, Calendar, RotateCcw } from "lucide-react";
+import { Clock, BookOpen, Compass, ScanLine, MapPin, Moon, Star, ShieldAlert, CloudSun, MapPinned, Calendar, RotateCcw, ChevronRight } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import heroImage from "@/assets/hero-mosque.jpg";
@@ -106,14 +106,14 @@ const HomePage = () => {
   const [prayerTimes, setPrayerTimes] = useState<PrayerTimesData | null>(null);
 
   const QUICK_ACTIONS = [
-    { label: t("home.prayerTimes"), icon: Clock, path: "/prayer" },
-    { label: t("nav.qibla"), icon: Compass, path: "/qibla" },
-    { label: t("nav.quran"), icon: BookOpen, path: "/quran" },
-    { label: t("nav.halalScanner"), icon: ScanLine, path: "/scanner" },
-    { label: t("nav.ramadan"), icon: Star, path: "/ramadan" },
-    { label: t("nav.boycott"), icon: ShieldAlert, path: "/boycott" },
-    { label: t("nav.nearby"), icon: MapPin, path: "/nearby" },
-    { label: t("nav.hadith"), icon: Moon, path: "/hadith" },
+    { label: t("home.prayerTimes"), icon: Clock, path: "/prayer", desc: t("more.prayerDesc", "View accurate prayer times for your location"), gradient: "from-emerald-800/80 to-emerald-600/60" },
+    { label: t("nav.qibla"), icon: Compass, path: "/qibla", desc: t("more.qiblaDesc", "Find the exact direction of the Kaaba in Makkah from wherever you are"), gradient: "from-emerald-900/80 to-emerald-700/60" },
+    { label: t("nav.quran"), icon: BookOpen, path: "/quran", desc: t("more.quranDesc", "Read and listen to the Holy Quran with translations"), gradient: "from-teal-800/80 to-teal-600/60" },
+    { label: t("nav.halalScanner"), icon: ScanLine, path: "/scanner", desc: t("more.halalDesc", "Scan barcodes to check Halal status of food products"), gradient: "from-emerald-800/80 to-green-600/60" },
+    { label: t("nav.ramadan"), icon: Star, path: "/ramadan", desc: t("more.ramadanDesc", "Ramadan schedule, Suhoor & Iftar times"), gradient: "from-amber-800/80 to-yellow-600/60" },
+    { label: t("nav.boycott"), icon: ShieldAlert, path: "/boycott", desc: t("more.boycottDesc", "Check and search boycott product directory"), gradient: "from-rose-800/80 to-pink-600/60" },
+    { label: t("nav.nearby"), icon: MapPin, path: "/nearby", desc: t("more.nearbyDesc", "Find nearby mosques and halal restaurants"), gradient: "from-slate-700/80 to-slate-500/60" },
+    { label: t("nav.hadith"), icon: Moon, path: "/hadith", desc: t("more.hadithDesc", "Sayings of the Prophet ﷺ from Bukhari, Muslim & more"), gradient: "from-purple-800/80 to-violet-500/60" },
   ];
 
   // Load prayer times from cache first, then fetch if needed (once per day)
@@ -398,15 +398,19 @@ const HomePage = () => {
         {/* Quick Actions */}
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.55 }}>
           <h3 className="mb-3 text-sm font-semibold uppercase tracking-wider text-muted-foreground">{t("home.quickActions")}</h3>
-          <div className="grid grid-cols-3 gap-3">
+          <div className="flex flex-col gap-3">
             {QUICK_ACTIONS.map((action) => {
               const Icon = action.icon;
               return (
-                <button key={action.label} onClick={() => navigate(action.path)} className="group flex flex-col items-center gap-3 rounded-2xl glass-card p-5 transition-all hover:glow-gold active:scale-95">
-                  <div className="flex h-16 w-16 items-center justify-center rounded-full bg-primary/10 group-hover:bg-primary/20 transition-colors">
-                    <Icon size={30} className="text-primary" />
+                <button key={action.label} onClick={() => navigate(action.path)} className={`group relative flex items-center gap-4 rounded-2xl bg-gradient-to-r ${action.gradient} border border-white/10 p-4 transition-all hover:scale-[1.01] active:scale-[0.98] overflow-hidden`}>
+                  <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-white/10 backdrop-blur-sm">
+                    <Icon size={28} className="text-white/90" />
                   </div>
-                  <span className="text-sm font-medium text-foreground text-center leading-tight">{action.label}</span>
+                  <div className="flex-1 text-left">
+                    <h4 className="text-base font-bold text-white">{action.label}</h4>
+                    <p className="text-xs text-white/60 leading-snug mt-0.5">{action.desc}</p>
+                  </div>
+                  <ChevronRight size={20} className="text-white/40 shrink-0" />
                 </button>
               );
             })}
