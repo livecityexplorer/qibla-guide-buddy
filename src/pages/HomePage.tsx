@@ -398,15 +398,19 @@ const HomePage = () => {
         {/* Quick Actions */}
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.55 }}>
           <h3 className="mb-3 text-sm font-semibold uppercase tracking-wider text-muted-foreground">{t("home.quickActions")}</h3>
-          <div className="grid grid-cols-3 gap-3">
+          <div className="flex flex-col gap-3">
             {QUICK_ACTIONS.map((action) => {
               const Icon = action.icon;
               return (
-                <button key={action.label} onClick={() => navigate(action.path)} className="group flex flex-col items-center gap-3 rounded-2xl glass-card p-5 transition-all hover:glow-gold active:scale-95">
-                  <div className="flex h-16 w-16 items-center justify-center rounded-full bg-primary/10 group-hover:bg-primary/20 transition-colors">
-                    <Icon size={30} className="text-primary" />
+                <button key={action.label} onClick={() => navigate(action.path)} className={`group relative flex items-center gap-4 rounded-2xl bg-gradient-to-r ${action.gradient} border border-white/10 p-4 transition-all hover:scale-[1.01] active:scale-[0.98] overflow-hidden`}>
+                  <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-white/10 backdrop-blur-sm">
+                    <Icon size={28} className="text-white/90" />
                   </div>
-                  <span className="text-sm font-medium text-foreground text-center leading-tight">{action.label}</span>
+                  <div className="flex-1 text-left">
+                    <h4 className="text-base font-bold text-white">{action.label}</h4>
+                    <p className="text-xs text-white/60 leading-snug mt-0.5">{action.desc}</p>
+                  </div>
+                  <ChevronRight size={20} className="text-white/40 shrink-0" />
                 </button>
               );
             })}
