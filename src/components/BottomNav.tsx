@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
-import { Home, Clock, Compass, BookOpen, MoreHorizontal, ScanLine, MapPin, Moon, Star, ShieldAlert, User } from "lucide-react";
+import { Home, Clock, Compass, BookOpen, MoreHorizontal, ScanLine, MapPin, Moon, Star, ShieldAlert, User, ChevronRight } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useTranslation } from "react-i18next";
 
