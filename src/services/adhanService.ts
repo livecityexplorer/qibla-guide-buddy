@@ -191,6 +191,7 @@ export function playAdhan(settings: AdhanSettings): void {
   audio.loop = false;
 
   requestWakeLock();
+  setupMediaSession(settings);
 
   const playPromise = audio.play();
   if (playPromise) {
@@ -200,8 +201,27 @@ export function playAdhan(settings: AdhanSettings): void {
     });
   }
 
-  audio.addEventListener("ended", () => releaseWakeLock(), { once: true });
+  audio.addEventListener("ended", () => {
+    releaseWakeLock();
+    clearMediaSession();
+  }, { once: true });
   showAdhanNotification(settings);
+}
+
+export function muteAdhan(): void {
+  if (audioElement) {
+    audioElement.volume = 0;
+  }
+}
+
+export function unmuteAdhan(volume?: number): void {
+  if (audioElement) {
+    audioElement.volume = volume ?? getAdhanSettings().volume;
+  }
+}
+
+export function isAdhanPlaying(): boolean {
+  return !!audioElement && !audioElement.paused && audioElement.currentTime > 0;
 }
 
 export function stopAdhan(): void {
