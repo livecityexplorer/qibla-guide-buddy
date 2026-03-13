@@ -32,6 +32,7 @@ import NotFound from "./pages/NotFound";
 import { QuranPlayerProvider } from "./contexts/QuranPlayerContext";
 import QuranMiniPlayer from "./components/QuranMiniPlayer";
 import PWAInstallPrompt from "./components/PWAInstallPrompt";
+import AdhanPlaybackOverlay from "./components/AdhanPlaybackOverlay";
 
 const queryClient = new QueryClient();
 
