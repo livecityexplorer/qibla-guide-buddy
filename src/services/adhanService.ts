@@ -230,6 +230,38 @@ export function stopAdhan(): void {
     audioElement.currentTime = 0;
   }
   releaseWakeLock();
+  clearMediaSession();
+}
+
+// ─── Media Session API (lock screen controls) ───
+
+function setupMediaSession(settings: AdhanSettings): void {
+  if (!("mediaSession" in navigator)) return;
+
+  const prayerName = getCurrentPrayerName(new Date()) || "Prayer";
+
+  navigator.mediaSession.metadata = new MediaMetadata({
+    title: `${prayerName} Adhan`,
+    artist: ADHAN_OPTIONS.find((o) => o.id === settings.selectedAdhan)?.label || "Adhan",
+    album: "Prayer Times",
+    artwork: [
+      { src: "/pwa-192x192.png", sizes: "192x192", type: "image/png" },
+      { src: "/pwa-512x512.png", sizes: "512x512", type: "image/png" },
+    ],
+  });
+
+  navigator.mediaSession.setActionHandler("stop", () => stopAdhan());
+  navigator.mediaSession.setActionHandler("pause", () => stopAdhan());
+  navigator.mediaSession.setActionHandler("play", null);
+  navigator.mediaSession.setActionHandler("previoustrack", null);
+  navigator.mediaSession.setActionHandler("nexttrack", null);
+}
+
+function clearMediaSession(): void {
+  if (!("mediaSession" in navigator)) return;
+  navigator.mediaSession.metadata = null;
+  navigator.mediaSession.setActionHandler("stop", null);
+  navigator.mediaSession.setActionHandler("pause", null);
 }
 
 // ─── Wake Lock ───
