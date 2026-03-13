@@ -76,6 +76,7 @@ const App = () => {
             <Route path="*" element={<NotFound />} />
           </Routes>
           <QuranMiniPlayer />
+          <AdhanPlaybackOverlay />
           <PWAInstallPrompt />
         </BrowserRouter>
       </QuranPlayerProvider>
