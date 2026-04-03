@@ -4,7 +4,7 @@
 
 declare const self: ServiceWorkerGlobalScope;
 
-const ADHAN_CACHE = "adhan-audio-v1";
+const ADHAN_CACHE = "adhan-audio-v2";
 const ADHAN_FILES = [
   "/audio/adhan-custom.mp3",
 ];
