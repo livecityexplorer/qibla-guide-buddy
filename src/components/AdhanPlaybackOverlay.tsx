@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Square, VolumeX, Volume2 } from "lucide-react";
-import { getAdhanAudio, stopAdhan, muteAdhan, unmuteAdhan, getAdhanSettings } from "@/services/adhanService";
+import { getAdhanAudio, stopAdhan, muteAdhan, unmuteAdhan, getAdhanSettings, isAudioUnlocking } from "@/services/adhanService";
 
 const AdhanPlaybackOverlay = () => {
   const [visible, setVisible] = useState(false);
@@ -9,7 +9,13 @@ const AdhanPlaybackOverlay = () => {
 
   useEffect(() => {
     const audio = getAdhanAudio();
-    const show = () => { setVisible(true); setMuted(false); };
+    const show = () => {
+      // Don't show overlay during silent unlock
+      if (isAudioUnlocking()) return;
+      if (audio.volume === 0) return;
+      setVisible(true);
+      setMuted(false);
+    };
     const hide = () => { setVisible(false); setMuted(false); };
 
     audio.addEventListener("play", show);
