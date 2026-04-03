@@ -138,6 +138,7 @@ export function saveAdhanSettings(settings: AdhanSettings): void {
 let audioElement: HTMLAudioElement | null = null;
 let scheduledTimers: number[] = [];
 let wakeLock: any = null;
+let isUnlocking = false; // Flag to suppress overlay during silent unlock
 
 export function getAdhanAudio(): HTMLAudioElement {
   if (!audioElement) {
@@ -145,6 +146,10 @@ export function getAdhanAudio(): HTMLAudioElement {
     audioElement.preload = "auto";
   }
   return audioElement;
+}
+
+export function isAudioUnlocking(): boolean {
+  return isUnlocking;
 }
 
 /**
@@ -156,10 +161,7 @@ export function unlockAdhanAudio(settings: AdhanSettings): void {
   const option = ADHAN_OPTIONS.find((o) => o.id === settings.selectedAdhan) || ADHAN_OPTIONS[0];
   const audio = getAdhanAudio();
 
-  // Use muted/near-silent playback for a split second to "unlock" audio.
-  const prevVolume = audio.volume;
-  const prevSrc = audio.src;
-
+  isUnlocking = true;
   audio.src = option.file;
   audio.volume = 0;
   audio.loop = false;
@@ -170,14 +172,16 @@ export function unlockAdhanAudio(settings: AdhanSettings): void {
       p.then(() => {
         audio.pause();
         audio.currentTime = 0;
-        audio.volume = prevVolume || settings.volume;
-        audio.src = prevSrc || audio.src;
+        audio.volume = settings.volume;
+        isUnlocking = false;
       }).catch(() => {
-        // ignore – some environments still block until a stronger gesture
+        isUnlocking = false;
       });
+    } else {
+      isUnlocking = false;
     }
   } catch {
-    // ignore
+    isUnlocking = false;
   }
 }
 
@@ -533,13 +537,16 @@ export function initAdhanService(): void {
     }
   });
 
-  // Keep-alive check every 30s
+  // Keep-alive check every 30s – only play if not already playing and we haven't played this prayer yet
+  let lastPlayedPrayer = "";
   setInterval(() => {
     const s = getAdhanSettings();
     if (!s.enabled) return;
+    if (isAdhanPlaying()) return; // Don't stack playback
     const now = new Date();
     const prayerName = getCurrentPrayerName(now);
-    if (prayerName && s.prayers[prayerName as keyof AdhanSettings["prayers"]]) {
+    if (prayerName && prayerName !== lastPlayedPrayer && s.prayers[prayerName as keyof AdhanSettings["prayers"]]) {
+      lastPlayedPrayer = prayerName;
       playAdhan(s);
     }
   }, 30000);
