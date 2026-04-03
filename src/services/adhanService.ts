@@ -26,7 +26,7 @@ const STORAGE_KEY = "adhan-settings";
 
 const DEFAULT_SETTINGS: AdhanSettings = {
   enabled: false,
-  selectedAdhan: "adhan-mishary",
+  selectedAdhan: "adhan-custom",
   volume: 0.8,
   preReminder: true,
   prayers: {
