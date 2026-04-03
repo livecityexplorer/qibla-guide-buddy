@@ -66,28 +66,28 @@ function getPrayerSchedule(): Record<string, string> {
 // Beautiful pre-reminder messages for each prayer
 const PRE_REMINDER_MESSAGES: Record<string, { title: string; body: string }> = {
   Fajr: {
-    title: "🌙 Fajr in 10 minutes",
-    body: "The dawn is near. \"Prayer is better than sleep.\" Prepare your heart for the most blessed prayer of the day. 🤲",
+    title: "🌅🕋 Fajr in 10 minutes",
+    body: "يا أيها المؤمن — The blessed dawn is near! \"الصلاة خير من النوم\" — Prayer is better than sleep. Make wudu and prepare your heart. The angels are witnessing. 🤲✨",
   },
   Sunrise: {
-    title: "🌅 Sunrise in 10 minutes",
-    body: "The sun is about to rise. A beautiful new day awaits — start it with gratitude and dhikr. 🌄",
+    title: "☀️🌄 Sunrise in 10 minutes",
+    body: "سبحان الله — The sun is about to rise! A beautiful new day from Allah awaits you. Start it with gratitude, dhikr, and Ishraq prayer for abundant reward. 🌅🕌",
   },
   Dhuhr: {
-    title: "☀️ Dhuhr in 10 minutes",
-    body: "Midday prayer is near. Pause your day, make wudu, and prepare to stand before your Lord. \"In the remembrance of Allah do hearts find rest.\" 🕌",
+    title: "☀️🕌 Dhuhr in 10 minutes",
+    body: "حان وقت الظهر — Midday prayer is approaching! Pause your worldly affairs and prepare to stand before your Lord. \"أَلَا بِذِكْرِ اللَّهِ تَطْمَئِنُّ الْقُلُوبُ\" — In Allah's remembrance hearts find rest. 🤲💎",
   },
   Asr: {
-    title: "🌤 Asr in 10 minutes",
-    body: "Asr is approaching. The Prophet ﷺ warned: \"Whoever misses Asr, it is as if they lost family and wealth.\" Don't miss it! 🤲",
+    title: "🌤🕋 Asr in 10 minutes",
+    body: "⚠️ حافظوا على الصلوات — Guard your prayers! The Prophet ﷺ said: \"Whoever misses Asr, it is as if they lost family and wealth.\" Make wudu now, don't let this prayer slip away! 🤲🔥",
   },
   Maghrib: {
-    title: "🌅 Maghrib in 10 minutes",
-    body: "The sun is setting soon. Prepare for Maghrib — may Allah fill your evening with barakah, peace, and light. ✨",
+    title: "🌅✨ Maghrib in 10 minutes",
+    body: "الله أكبر — The sun is setting beautifully! Prepare for Maghrib prayer. If fasting, your iftar is near! May Allah fill your evening with barakah, mercy, and noor. 🕌🌙",
   },
   Isha: {
-    title: "🌙 Isha in 10 minutes",
-    body: "The night prayer is near. \"And during the night, prostrate to Him and glorify Him a long part of the night.\" End your day beautifully. 🌟",
+    title: "🌙⭐ Isha in 10 minutes",
+    body: "يا عباد الله — The night prayer is near! \"وَمِنَ اللَّيْلِ فَاسْجُدْ لَهُ وَسَبِّحْهُ لَيْلًا طَوِيلًا\" — Prostrate and glorify Him. End your day with peace and Allah's forgiveness. 🤲🌟",
   },
 };
 
