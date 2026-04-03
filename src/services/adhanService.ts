@@ -537,13 +537,16 @@ export function initAdhanService(): void {
     }
   });
 
-  // Keep-alive check every 30s
+  // Keep-alive check every 30s – only play if not already playing and we haven't played this prayer yet
+  let lastPlayedPrayer = "";
   setInterval(() => {
     const s = getAdhanSettings();
     if (!s.enabled) return;
+    if (isAdhanPlaying()) return; // Don't stack playback
     const now = new Date();
     const prayerName = getCurrentPrayerName(now);
-    if (prayerName && s.prayers[prayerName as keyof AdhanSettings["prayers"]]) {
+    if (prayerName && prayerName !== lastPlayedPrayer && s.prayers[prayerName as keyof AdhanSettings["prayers"]]) {
+      lastPlayedPrayer = prayerName;
       playAdhan(s);
     }
   }, 30000);
