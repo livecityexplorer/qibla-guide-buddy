@@ -29,7 +29,7 @@ const LANGUAGES = [
   { code: "zh", label: "中文" },
 ];
 
-const ADHAN_SOUNDS = ["Default (Mishary)", "Dubai", "Madinah", "Makkah", "Nafees"];
+const ADHAN_SOUNDS = ["Beautiful Adhan"];
 const PRAYER_METHODS = [
   "Muslim World League",
   "Egyptian General Authority",
