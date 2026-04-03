@@ -161,10 +161,7 @@ export function unlockAdhanAudio(settings: AdhanSettings): void {
   const option = ADHAN_OPTIONS.find((o) => o.id === settings.selectedAdhan) || ADHAN_OPTIONS[0];
   const audio = getAdhanAudio();
 
-  // Use muted/near-silent playback for a split second to "unlock" audio.
-  const prevVolume = audio.volume;
-  const prevSrc = audio.src;
-
+  isUnlocking = true;
   audio.src = option.file;
   audio.volume = 0;
   audio.loop = false;
@@ -175,14 +172,16 @@ export function unlockAdhanAudio(settings: AdhanSettings): void {
       p.then(() => {
         audio.pause();
         audio.currentTime = 0;
-        audio.volume = prevVolume || settings.volume;
-        audio.src = prevSrc || audio.src;
+        audio.volume = settings.volume;
+        isUnlocking = false;
       }).catch(() => {
-        // ignore – some environments still block until a stronger gesture
+        isUnlocking = false;
       });
+    } else {
+      isUnlocking = false;
     }
   } catch {
-    // ignore
+    isUnlocking = false;
   }
 }
 
