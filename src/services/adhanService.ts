@@ -138,6 +138,7 @@ export function saveAdhanSettings(settings: AdhanSettings): void {
 let audioElement: HTMLAudioElement | null = null;
 let scheduledTimers: number[] = [];
 let wakeLock: any = null;
+let isUnlocking = false; // Flag to suppress overlay during silent unlock
 
 export function getAdhanAudio(): HTMLAudioElement {
   if (!audioElement) {
@@ -145,6 +146,10 @@ export function getAdhanAudio(): HTMLAudioElement {
     audioElement.preload = "auto";
   }
   return audioElement;
+}
+
+export function isAudioUnlocking(): boolean {
+  return isUnlocking;
 }
 
 /**
