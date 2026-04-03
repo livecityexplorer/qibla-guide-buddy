@@ -4,12 +4,9 @@
 
 declare const self: ServiceWorkerGlobalScope;
 
-const ADHAN_CACHE = "adhan-audio-v1";
+const ADHAN_CACHE = "adhan-audio-v2";
 const ADHAN_FILES = [
   "/audio/adhan-custom.mp3",
-  "/audio/adhan-mishary.mp3",
-  "/audio/adhan-nafees.mp3",
-  "/audio/adhan-dubai.mp3",
 ];
 
 self.addEventListener("install", (event) => {

@@ -17,9 +17,6 @@ export interface AdhanSettings {
 
 export const ADHAN_OPTIONS = [
   { id: "adhan-custom", label: "Beautiful Adhan", file: "/audio/adhan-custom.mp3" },
-  { id: "adhan-mishary", label: "Mishary Rashid Alafasy", file: "/audio/adhan-mishary.mp3" },
-  { id: "adhan-nafees", label: "Ahmad al-Nafees", file: "/audio/adhan-nafees.mp3" },
-  { id: "adhan-dubai", label: "Dubai One TV - Mishary", file: "/audio/adhan-dubai.mp3" },
 ];
 
 const STORAGE_KEY = "adhan-settings";
