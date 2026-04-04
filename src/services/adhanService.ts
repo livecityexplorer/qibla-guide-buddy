@@ -224,6 +224,10 @@ export function unlockAdhanAudio(settings: AdhanSettings): void {
         audio.currentTime = 0;
         audio.volume = settings.volume;
         isUnlocking = false;
+        // Start keep-alive after successful audio unlock
+        if (settings.enabled) {
+          startKeepAliveAudio();
+        }
       }).catch(() => {
         isUnlocking = false;
       });
