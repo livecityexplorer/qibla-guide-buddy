@@ -139,6 +139,9 @@ let audioElement: HTMLAudioElement | null = null;
 let scheduledTimers: number[] = [];
 let wakeLock: any = null;
 let isUnlocking = false; // Flag to suppress overlay during silent unlock
+let keepAliveAudioCtx: AudioContext | null = null;
+let keepAliveOscillator: OscillatorNode | null = null;
+let keepAliveInterval: number | null = null;
 
 export function getAdhanAudio(): HTMLAudioElement {
   if (!audioElement) {
@@ -146,6 +149,53 @@ export function getAdhanAudio(): HTMLAudioElement {
     audioElement.preload = "auto";
   }
   return audioElement;
+}
+
+/**
+ * Start a silent audio keep-alive using Web Audio API.
+ * This prevents the browser from suspending the JS thread and audio context
+ * when the screen is locked or the app is in the background.
+ * Uses a near-inaudible oscillator (1Hz, gain ~0) to keep the audio pipeline active.
+ */
+function startKeepAliveAudio(): void {
+  if (keepAliveAudioCtx) return; // Already running
+  try {
+    keepAliveAudioCtx = new (window.AudioContext || (window as any).webkitAudioContext)();
+    const gainNode = keepAliveAudioCtx.createGain();
+    gainNode.gain.value = 0.001; // Nearly silent
+    gainNode.connect(keepAliveAudioCtx.destination);
+
+    keepAliveOscillator = keepAliveAudioCtx.createOscillator();
+    keepAliveOscillator.frequency.value = 1; // 1Hz - inaudible
+    keepAliveOscillator.connect(gainNode);
+    keepAliveOscillator.start();
+
+    // Periodically resume AudioContext if it gets suspended (browser policy)
+    keepAliveInterval = window.setInterval(() => {
+      if (keepAliveAudioCtx?.state === "suspended") {
+        keepAliveAudioCtx.resume().catch(() => {});
+      }
+    }, 10000);
+
+    console.log("[adhan] Keep-alive audio started for background playback");
+  } catch (e) {
+    console.log("[adhan] Keep-alive audio failed:", e);
+  }
+}
+
+function stopKeepAliveAudio(): void {
+  if (keepAliveOscillator) {
+    try { keepAliveOscillator.stop(); } catch {}
+    keepAliveOscillator = null;
+  }
+  if (keepAliveAudioCtx) {
+    try { keepAliveAudioCtx.close(); } catch {}
+    keepAliveAudioCtx = null;
+  }
+  if (keepAliveInterval) {
+    clearInterval(keepAliveInterval);
+    keepAliveInterval = null;
+  }
 }
 
 export function isAudioUnlocking(): boolean {
@@ -174,6 +224,10 @@ export function unlockAdhanAudio(settings: AdhanSettings): void {
         audio.currentTime = 0;
         audio.volume = settings.volume;
         isUnlocking = false;
+        // Start keep-alive after successful audio unlock
+        if (settings.enabled) {
+          startKeepAliveAudio();
+        }
       }).catch(() => {
         isUnlocking = false;
       });
@@ -437,7 +491,13 @@ export function scheduleAdhan(settings: AdhanSettings): void {
   scheduledTimers.forEach((id) => clearTimeout(id));
   scheduledTimers = [];
 
-  if (!settings.enabled) return;
+  if (!settings.enabled) {
+    stopKeepAliveAudio();
+    return;
+  }
+
+  // Start keep-alive to prevent browser from suspending timers/audio when screen locks
+  startKeepAliveAudio();
 
   const now = new Date();
   const currentMs = now.getHours() * 3600000 + now.getMinutes() * 60000 + now.getSeconds() * 1000;
