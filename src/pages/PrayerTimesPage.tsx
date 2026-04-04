@@ -72,22 +72,22 @@ const PrayerTimesPage = () => {
 
   return (
     <div className="min-h-screen">
-      <div className="gradient-emerald px-4 pb-8 pt-12 islamic-pattern">
+      <div className="bg-gradient-to-br from-[hsl(160,50%,32%)] via-[hsl(160,45%,38%)] to-[hsl(160,40%,45%)] px-4 pb-8 pt-12 islamic-pattern">
         <div className="flex items-center justify-between mb-4">
-          <button onClick={() => navigate("/")} className="flex items-center gap-2 text-primary-foreground/80">
+          <button onClick={() => navigate("/")} className="flex items-center gap-2 text-white/90">
             <ArrowLeft size={20} />
             <span className="text-sm">{t("common.back")}</span>
           </button>
           <button
             onClick={() => setShowSettings(!showSettings)}
-            className="flex items-center gap-2 rounded-full bg-primary-foreground/20 px-3 py-1.5 text-primary-foreground"
+            className="flex items-center gap-2 rounded-full bg-white/25 px-3 py-1.5 text-white font-medium shadow-sm"
           >
             <Settings size={16} />
             <span className="text-xs font-medium">{t("common.settings")}</span>
           </button>
         </div>
-        <h1 className="text-2xl font-bold text-primary-foreground">{t("prayer.title")}</h1>
-        <p className="mt-1 text-sm text-primary-foreground/70">
+        <h1 className="text-2xl font-bold text-white">{t("prayer.title")}</h1>
+        <p className="mt-1 text-sm text-white/80">
           {new Date().toLocaleDateString("en-US", {
             weekday: "long",
             year: "numeric",
@@ -96,10 +96,10 @@ const PrayerTimesPage = () => {
           })}
         </p>
         {locationName && (
-          <div className="mt-1 flex items-center gap-1 text-xs text-primary-foreground/60">
+          <div className="mt-1 flex items-center gap-1 text-xs text-white/70">
             <MapPin size={12} />
             <span>{locationName}</span>
-            <button onClick={loadTimes} className="ml-1 p-0.5 rounded hover:bg-primary-foreground/10">
+            <button onClick={loadTimes} className="ml-1 p-0.5 rounded hover:bg-white/15">
               <RefreshCw size={12} className={loading ? "animate-spin" : ""} />
             </button>
           </div>
