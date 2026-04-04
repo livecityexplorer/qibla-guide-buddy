@@ -491,7 +491,13 @@ export function scheduleAdhan(settings: AdhanSettings): void {
   scheduledTimers.forEach((id) => clearTimeout(id));
   scheduledTimers = [];
 
-  if (!settings.enabled) return;
+  if (!settings.enabled) {
+    stopKeepAliveAudio();
+    return;
+  }
+
+  // Start keep-alive to prevent browser from suspending timers/audio when screen locks
+  startKeepAliveAudio();
 
   const now = new Date();
   const currentMs = now.getHours() * 3600000 + now.getMinutes() * 60000 + now.getSeconds() * 1000;
