@@ -234,19 +234,18 @@ const QuranPage = () => {
     <div className="min-h-screen pb-20">
       {/* ── Enhanced Hero Header ── */}
       <div className="relative overflow-hidden">
-        <div className="absolute inset-0 gradient-emerald" />
-        <div className="absolute inset-0 bg-gradient-to-b from-black/20 via-transparent to-black/10" />
+        <div className="absolute inset-0 bg-gradient-to-br from-[hsl(160,50%,32%)] via-[hsl(160,45%,38%)] to-[hsl(160,40%,45%)]" />
         <div className="absolute inset-0 islamic-pattern opacity-80" />
-        <div className="absolute -top-16 -right-16 w-48 h-48 rounded-full border border-primary-foreground/10" />
-        <div className="absolute -top-8 -right-8 w-32 h-32 rounded-full border border-primary-foreground/5" />
-        <div className="absolute bottom-0 left-0 w-24 h-24 rounded-full border border-primary-foreground/5 -mb-12 -ml-12" />
+        <div className="absolute -top-16 -right-16 w-48 h-48 rounded-full border border-white/10" />
+        <div className="absolute -top-8 -right-8 w-32 h-32 rounded-full border border-white/5" />
+        <div className="absolute bottom-0 left-0 w-24 h-24 rounded-full border border-white/5 -mb-12 -ml-12" />
 
         <div className="relative px-4 pb-8 pt-12">
           <div className="flex items-center justify-between mb-6">
             {/* BIGGER Back button */}
             <button
               onClick={() => (selectedSurah ? setSelectedSurah(null) : navigate("/"))}
-              className="flex items-center gap-2 rounded-xl bg-primary-foreground/20 backdrop-blur-sm border border-primary-foreground/20 px-4 py-2.5 text-primary-foreground hover:bg-primary-foreground/30 transition-colors active:scale-95"
+              className="flex items-center gap-2 rounded-xl bg-white/25 backdrop-blur-sm border border-white/20 px-4 py-2.5 text-white hover:bg-white/30 transition-colors active:scale-95"
             >
               <ArrowLeft size={22} />
               <span className="text-sm font-semibold">Back</span>
@@ -254,7 +253,7 @@ const QuranPage = () => {
 
             {/* BIGGER Reciter selector - lighter colors */}
             <Select value={player.reciter} onValueChange={player.setReciter}>
-              <SelectTrigger className="w-auto max-w-[200px] h-11 text-sm bg-primary-foreground/25 backdrop-blur-sm border-2 border-primary-foreground/30 text-primary-foreground rounded-xl px-4 font-medium">
+              <SelectTrigger className="w-auto max-w-[200px] h-11 text-sm bg-white/25 backdrop-blur-sm border-2 border-white/30 text-white rounded-xl px-4 font-medium">
                 <Volume2 size={18} className="mr-2" />
                 <SelectValue />
               </SelectTrigger>
@@ -270,14 +269,14 @@ const QuranPage = () => {
 
           {/* Title area */}
           <div className="text-center">
-            <p className="text-primary-foreground/40 text-2xl font-arabic mb-1">﷽</p>
-            <h1 className="text-3xl font-bold text-primary-foreground tracking-tight">
+            <p className="text-white/80 text-2xl font-arabic mb-1">﷽</p>
+            <h1 className="text-3xl font-bold text-white tracking-tight">
               Holy Quran
             </h1>
-            <p className="mt-1.5 text-sm text-primary-foreground/60 font-medium">
+            <p className="mt-1.5 text-sm text-white/80 font-medium">
               القرآن الكريم
             </p>
-            <p className="mt-1 text-xs text-primary-foreground/40">
+            <p className="mt-1 text-xs text-white/70">
               Read, listen & reflect on the words of Allah
             </p>
           </div>
