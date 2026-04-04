@@ -254,9 +254,9 @@ const HomePage = () => {
     <div className="min-h-screen gradient-dark">
       {/* Hero */}
       <div className="relative h-60 overflow-hidden">
-        <img src={heroImage} alt="Mosque at sunset" className="h-full w-full object-cover opacity-60" />
-        <div className="absolute inset-0 bg-gradient-to-b from-background/30 via-transparent to-background" />
-        <div className="absolute inset-0 bg-gradient-to-r from-background/60 to-transparent" />
+        <img src={heroImage} alt="Mosque at sunset" className="h-full w-full object-cover opacity-80" />
+        <div className="absolute inset-0 bg-gradient-to-b from-background/10 via-transparent to-background" />
+        <div className="absolute inset-0 bg-gradient-to-r from-background/40 to-transparent" />
         <div className="absolute bottom-5 left-5 right-5">
           <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.6 }}>
             <p className="text-sm font-medium text-gold font-arabic">بِسْمِ ٱللَّهِ ٱلرَّحْمَـٰنِ ٱلرَّحِيمِ</p>
