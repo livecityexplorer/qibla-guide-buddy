@@ -555,85 +555,87 @@ const QuranPage = () => {
                     key={ayah.number}
                     ref={(el) => setAyahRef(i, el)}
                     onClick={() => handleAyahVisible(ayah, i)}
-                    className={`rounded-xl p-5 shadow-sm transition-all duration-500 ${
+                    className={`rounded-2xl p-5 shadow-sm transition-all duration-500 border ${
                       isCurrentlyPlaying
-                        ? "bg-primary/10 border-2 border-primary/40 ring-2 ring-primary/20"
-                        : "bg-card"
+                        ? "bg-primary/10 border-primary/30 ring-2 ring-primary/20 shadow-emerald"
+                        : "bg-card border-border/40 hover:border-border"
                     }`}
                   >
-                    <div className="flex items-center justify-between mb-3">
-                      <span
-                        className={`flex h-9 w-9 items-center justify-center rounded-full text-sm font-bold ${
-                          isCurrentlyPlaying
-                            ? "bg-primary text-primary-foreground"
-                            : "bg-secondary text-secondary-foreground"
-                        }`}
-                      >
-                        {ayah.numberInSurah}
-                      </span>
-                      <div className="flex items-center gap-2">
-                        {/* BIGGER Bookmark button */}
+                    {/* Ayah number row */}
+                    <div className="flex items-center justify-between mb-4">
+                      <div className="flex items-center gap-3">
+                        <span
+                          className={`flex h-10 w-10 items-center justify-center rounded-xl text-sm font-bold transition-colors ${
+                            isCurrentlyPlaying
+                              ? "gradient-emerald text-white shadow-emerald"
+                              : "bg-secondary text-secondary-foreground"
+                          }`}
+                        >
+                          {ayah.numberInSurah}
+                        </span>
+                        {isCurrentlyPlaying && (
+                          <span className="text-[11px] font-semibold text-primary bg-primary/10 px-2 py-0.5 rounded-full animate-pulse">
+                            ♫ Now Playing
+                          </span>
+                        )}
+                      </div>
+                      <div className="flex items-center gap-1.5">
                         <button
                           onClick={(e) => {
                             e.stopPropagation();
                             handleBookmarkAyah(ayah, i);
                           }}
-                          className={`p-3 rounded-full transition-colors ${
+                          className={`p-2.5 rounded-xl transition-all ${
                             isBookmarked
-                              ? "bg-primary/20 text-primary"
-                              : "bg-secondary hover:bg-secondary/80 text-muted-foreground"
+                              ? "bg-primary/15 text-primary scale-110"
+                              : "bg-secondary/60 hover:bg-secondary text-muted-foreground"
                           }`}
                         >
                           {isBookmarked ? (
-                            <BookmarkCheck size={20} />
+                            <BookmarkCheck size={18} />
                           ) : (
-                            <Bookmark size={20} />
+                            <Bookmark size={18} />
                           )}
                         </button>
-                        {/* BIGGER Play button */}
                         <button
                           onClick={(e) => {
                             e.stopPropagation();
                             handlePlayAyah(ayah, i);
                           }}
-                          className={`p-3 rounded-full transition-colors ${
+                          className={`p-2.5 rounded-xl transition-all ${
                             isCurrentlyPlaying
-                              ? "gradient-emerald"
-                              : "bg-secondary hover:bg-secondary/80"
+                              ? "gradient-emerald shadow-emerald"
+                              : "bg-secondary/60 hover:bg-secondary"
                           }`}
                         >
                           {isCurrentlyPlaying && player.isPlaying ? (
-                            <Pause
-                              size={20}
-                              className={
-                                isCurrentlyPlaying ? "text-primary-foreground" : "text-foreground"
-                              }
-                            />
+                            <Pause size={18} className={isCurrentlyPlaying ? "text-white" : "text-foreground"} />
                           ) : (
-                            <Play
-                              size={20}
-                              className={
-                                isCurrentlyPlaying ? "text-primary-foreground" : "text-foreground"
-                              }
-                            />
+                            <Play size={18} className={isCurrentlyPlaying ? "text-white" : "text-foreground"} />
                           )}
                         </button>
                       </div>
                     </div>
+
+                    {/* Arabic text */}
                     <p
-                      className="text-right leading-[2.2] font-arabic text-foreground"
+                      className="text-right leading-[2.4] font-arabic text-foreground"
                       translate="no"
                       style={{ fontSize: `${arabicSize}px` }}
                     >
                       {ayah.text}
                     </p>
+
+                    {/* Translation */}
                     {translation && (
-                      <p
-                        className="mt-3 leading-relaxed text-muted-foreground border-t border-border pt-3"
-                        style={{ fontSize: `${translationSize}px` }}
-                      >
-                        {translation.text}
-                      </p>
+                      <div className="mt-4 pt-3 border-t border-border/50">
+                        <p
+                          className="leading-relaxed text-muted-foreground"
+                          style={{ fontSize: `${translationSize}px` }}
+                        >
+                          {translation.text}
+                        </p>
+                      </div>
                     )}
                   </div>
                 );
