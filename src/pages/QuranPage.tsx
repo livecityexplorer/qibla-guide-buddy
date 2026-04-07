@@ -427,39 +427,56 @@ const QuranPage = () => {
               </button>
 
               {/* Enhanced Surah header card */}
-              <div className="relative rounded-2xl overflow-hidden shadow-emerald">
-                <div className="absolute inset-0 gradient-emerald" />
-                <div className="absolute inset-0 islamic-pattern opacity-60" />
-                <div className="absolute -top-10 -right-10 w-36 h-36 rounded-full border border-primary-foreground/10" />
-                <div className="absolute -bottom-8 -left-8 w-28 h-28 rounded-full border border-primary-foreground/8" />
-                <div className="relative p-6 text-center">
-                  <p className="text-primary-foreground/30 text-lg font-arabic mb-2">﷽</p>
-                  <h2 className="text-3xl font-bold text-primary-foreground font-arabic leading-relaxed">
+              <div className="relative rounded-3xl overflow-hidden shadow-luxury">
+                <div className="absolute inset-0 bg-gradient-to-br from-[hsl(160,50%,30%)] via-[hsl(160,45%,36%)] to-[hsl(43,80%,45%)]" />
+                <div className="absolute inset-0 islamic-pattern opacity-40" />
+                <div className="absolute -top-16 -right-16 w-52 h-52 rounded-full border-2 border-white/8" />
+                <div className="absolute -bottom-12 -left-12 w-40 h-40 rounded-full border border-white/5" />
+                <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-72 h-72 rounded-full border border-white/[0.03]" />
+
+                <div className="relative px-6 py-8 text-center">
+                  {/* Bismillah ornament */}
+                  <div className="inline-flex items-center gap-3 mb-4">
+                    <div className="h-px w-10 bg-gradient-to-r from-transparent to-white/30" />
+                    <p className="text-white/60 text-2xl font-arabic">﷽</p>
+                    <div className="h-px w-10 bg-gradient-to-l from-transparent to-white/30" />
+                  </div>
+
+                  {/* Surah Arabic name */}
+                  <h2 className="text-4xl font-bold text-white font-arabic leading-relaxed drop-shadow-sm">
                     {arabicData.name}
                   </h2>
-                  <div className="mt-2 inline-flex items-center gap-2">
-                    <span className="text-base font-semibold text-primary-foreground/90">
+
+                  {/* English name + translation */}
+                  <div className="mt-3 inline-flex items-center gap-2.5">
+                    <span className="text-lg font-semibold text-white/95 tracking-wide">
                       {arabicData.englishName}
                     </span>
-                    <span className="h-1 w-1 rounded-full bg-primary-foreground/40" />
-                    <span className="text-sm text-primary-foreground/60">
+                    <span className="h-1.5 w-1.5 rounded-full bg-white/40" />
+                    <span className="text-sm text-white/70 italic">
                       {arabicData.englishNameTranslation}
                     </span>
                   </div>
-                  <div className="mt-2 flex items-center justify-center gap-3">
-                    <span className="text-xs text-primary-foreground/50 bg-primary-foreground/10 px-2.5 py-1 rounded-full">
-                      {arabicData.numberOfAyahs} Ayahs
+
+                  {/* Info badges */}
+                  <div className="mt-3 flex items-center justify-center gap-2.5">
+                    <span className="text-xs font-medium text-white/80 bg-white/15 backdrop-blur-sm px-3 py-1.5 rounded-full border border-white/10">
+                      📖 {arabicData.numberOfAyahs} Ayahs
                     </span>
-                    <span className="text-xs text-primary-foreground/50 bg-primary-foreground/10 px-2.5 py-1 rounded-full">
-                      {arabicData.revelationType}
+                    <span className="text-xs font-medium text-white/80 bg-white/15 backdrop-blur-sm px-3 py-1.5 rounded-full border border-white/10">
+                      🕌 {arabicData.revelationType}
                     </span>
                   </div>
-                  {/* BIGGER Play Entire Surah button */}
+
+                  {/* Play button */}
                   <button
                     onClick={handlePlayAll}
-                    className="mt-4 inline-flex items-center gap-3 rounded-full bg-primary-foreground/20 backdrop-blur-sm border-2 border-primary-foreground/30 px-7 py-3.5 text-base font-bold text-primary-foreground hover:bg-primary-foreground/30 transition-colors active:scale-95"
+                    className="mt-5 inline-flex items-center gap-3 rounded-full bg-white/20 backdrop-blur-md border-2 border-white/30 px-8 py-4 text-base font-bold text-white hover:bg-white/30 transition-all active:scale-95 shadow-lg"
                   >
-                    <Play size={22} /> Play Entire Surah
+                    <div className="h-8 w-8 rounded-full bg-white/25 flex items-center justify-center">
+                      <Play size={18} className="ml-0.5" />
+                    </div>
+                    Play Entire Surah
                   </button>
                 </div>
               </div>
