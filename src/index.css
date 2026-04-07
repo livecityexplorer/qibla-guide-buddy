@@ -81,7 +81,7 @@
 
 @layer utilities {
   .gradient-emerald {
-    background: linear-gradient(135deg, hsl(var(--emerald-deep)), hsl(var(--emerald-dark)), hsl(var(--emerald-mid)));
+    background: linear-gradient(135deg, hsl(160 55% 30%), hsl(160 50% 38%), hsl(160 45% 48%));
   }
 
   .gradient-gold {
