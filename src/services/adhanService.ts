@@ -442,17 +442,31 @@ function showPreReminderNotification(prayerName: string): void {
 // ─── Service Worker Communication ───
 
 function syncSettingsToSW(settings: AdhanSettings) {
-  if ("serviceWorker" in navigator && navigator.serviceWorker.controller) {
-    navigator.serviceWorker.controller.postMessage({
-      type: "SCHEDULE_ADHAN",
-      data: {
-        ...settings,
-        adhanOptions: ADHAN_OPTIONS,
-        prayerSchedule: getPrayerSchedule(),
-        preReminderMessages: PRE_REMINDER_MESSAGES,
-        prayerTimeMessages: PRAYER_TIME_MESSAGES,
-      },
-    });
+  const data = {
+    ...settings,
+    adhanOptions: ADHAN_OPTIONS,
+    prayerSchedule: getPrayerSchedule(),
+    preReminderMessages: PRE_REMINDER_MESSAGES,
+    prayerTimeMessages: PRAYER_TIME_MESSAGES,
+  };
+
+  if ("serviceWorker" in navigator) {
+    // Try controller first
+    if (navigator.serviceWorker.controller) {
+      navigator.serviceWorker.controller.postMessage({
+        type: "SCHEDULE_ADHAN",
+        data,
+      });
+    }
+    // Also try via ready (covers cases where controller isn't set yet)
+    navigator.serviceWorker.ready.then((registration) => {
+      if (registration.active) {
+        registration.active.postMessage({
+          type: "SCHEDULE_ADHAN",
+          data,
+        });
+      }
+    }).catch(() => {});
   }
 }
 
