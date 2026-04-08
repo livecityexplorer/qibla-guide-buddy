@@ -1,85 +1,20 @@
 import { useState, useEffect, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { ArrowLeft, MapPin, Navigation, Star, Loader2, RefreshCw, ExternalLink, Phone, Clock, AlertCircle } from "lucide-react";
+import { ArrowLeft, MapPin, Navigation, Loader2, RefreshCw, ExternalLink, Phone, AlertCircle } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 
-type PlaceType = "mosque" | "restaurant" | "shop" | "butcher";
-
-interface NearbyPlace {
-  id: number;
+interface Mosque {
+  id: string;
   name: string;
-  type: PlaceType;
   lat: number;
   lon: number;
   distance: number;
   address?: string;
   phone?: string;
   website?: string;
-  openingHours?: string;
-  cuisine?: string;
-  tags: Record<string, string>;
-}
-
-// Overpass API query builder for OpenStreetMap
-function buildOverpassQuery(lat: number, lon: number, radius: number, type: PlaceType | "all"): string {
-  const bbox = `(around:${radius},${lat},${lon})`;
-  let filters: string[] = [];
-
-  if (type === "all" || type === "mosque") {
-    // Standard OSM tags for mosques
-    filters.push(`node["amenity"="place_of_worship"]["religion"="muslim"]${bbox};`);
-    filters.push(`way["amenity"="place_of_worship"]["religion"="muslim"]${bbox};`);
-    filters.push(`relation["amenity"="place_of_worship"]["religion"="muslim"]${bbox};`);
-    // Some mappers use "islam" instead of "muslim"
-    filters.push(`node["amenity"="place_of_worship"]["religion"="islam"]${bbox};`);
-    filters.push(`way["amenity"="place_of_worship"]["religion"="islam"]${bbox};`);
-    // Building=mosque tag
-    filters.push(`node["building"="mosque"]${bbox};`);
-    filters.push(`way["building"="mosque"]${bbox};`);
-    filters.push(`relation["building"="mosque"]${bbox};`);
-    // Name-based search for mosques in multiple languages
-    filters.push(`node["amenity"="place_of_worship"]["name"~"mosque|mosqu[eé]e|masjid|mezquita|moschee|مسجد|cami|mescid|masjed|musalla|jamia|jami",i]${bbox};`);
-    filters.push(`way["amenity"="place_of_worship"]["name"~"mosque|mosqu[eé]e|masjid|mezquita|moschee|مسجد|cami|mescid|masjed|musalla|jamia|jami",i]${bbox};`);
-    // Islamic centers often serve as mosques
-    filters.push(`node["amenity"="place_of_worship"]["name"~"islamic|islami|islam[ıi]c|muslim|centre islamique|centro isl|islamisch",i]${bbox};`);
-    filters.push(`way["amenity"="place_of_worship"]["name"~"islamic|islami|islam[ıi]c|muslim|centre islamique|centro isl|islamisch",i]${bbox};`);
-    // Some mosques are tagged as community centres
-    filters.push(`node["amenity"="community_centre"]["religion"="muslim"]${bbox};`);
-    filters.push(`way["amenity"="community_centre"]["religion"="muslim"]${bbox};`);
-    filters.push(`node["amenity"="community_centre"]["name"~"mosque|masjid|islamic|muslim|مسجد",i]${bbox};`);
-  }
-  if (type === "all" || type === "restaurant") {
-    filters.push(`node["amenity"="restaurant"]["diet:halal"="yes"]${bbox};`);
-    filters.push(`way["amenity"="restaurant"]["diet:halal"="yes"]${bbox};`);
-    filters.push(`node["amenity"="restaurant"]["cuisine"~"halal|arab|turkish|middle_eastern|pakistani|indian|afghan|moroccan|lebanese|persian|syrian|egyptian|somali|bangladeshi|indonesian|malaysian",i]${bbox};`);
-    filters.push(`way["amenity"="restaurant"]["cuisine"~"halal|arab|turkish|middle_eastern|pakistani|indian|afghan|moroccan|lebanese|persian|syrian|egyptian|somali|bangladeshi|indonesian|malaysian",i]${bbox};`);
-    filters.push(`node["amenity"="fast_food"]["diet:halal"="yes"]${bbox};`);
-    filters.push(`node["amenity"="cafe"]["diet:halal"="yes"]${bbox};`);
-  }
-  if (type === "all" || type === "shop") {
-    filters.push(`node["shop"="supermarket"]["diet:halal"="yes"]${bbox};`);
-    filters.push(`node["shop"="convenience"]["diet:halal"="yes"]${bbox};`);
-    filters.push(`node["shop"~"supermarket|convenience|grocery"]["name"~"halal|islamic|muslim|arab|turkish|pakistani",i]${bbox};`);
-    filters.push(`way["shop"~"supermarket|convenience|grocery"]["name"~"halal|islamic|muslim|arab|turkish|pakistani",i]${bbox};`);
-    filters.push(`node["shop"="grocery"]["organic"~"halal",i]${bbox};`);
-  }
-  if (type === "all" || type === "butcher") {
-    filters.push(`node["shop"="butcher"]["diet:halal"="yes"]${bbox};`);
-    filters.push(`way["shop"="butcher"]["diet:halal"="yes"]${bbox};`);
-    filters.push(`node["shop"="butcher"]["name"~"halal|islamic|muslim",i]${bbox};`);
-    filters.push(`way["shop"="butcher"]["name"~"halal|islamic|muslim",i]${bbox};`);
-  }
-
-  return `[out:json][timeout:25];(\n${filters.join("\n")}\n);out center body;`;
-}
-
-function classifyPlace(tags: Record<string, string>): PlaceType {
-  if (tags.amenity === "place_of_worship" || tags.building === "mosque" || tags.religion === "muslim" || tags.religion === "islam") return "mosque";
-  if (tags.amenity === "community_centre" && (tags.religion === "muslim" || /mosque|masjid|islamic/i.test(tags.name || ""))) return "mosque";
-  if (tags.shop === "butcher") return "butcher";
-  if (tags.shop) return "shop";
-  return "restaurant";
+  timezone?: string;
+  source: string;
 }
 
 function haversineDistance(lat1: number, lon1: number, lat2: number, lon2: number): number {
@@ -95,182 +30,82 @@ function formatDistance(km: number): string {
   return `${km.toFixed(1)} km`;
 }
 
-function buildAddress(tags: Record<string, string>): string {
-  const parts = [tags["addr:housenumber"], tags["addr:street"], tags["addr:city"]].filter(Boolean);
-  return parts.length > 0 ? parts.join(", ") : tags["addr:full"] || "";
+// MasjidiApp API
+async function searchMasjidiApp(lat: number, lon: number): Promise<Mosque[]> {
+  try {
+    const res = await fetch(
+      `https://api.masjidiapp.com/api/v2/masjid?lat=${lat}&long=${lon}&range=20`,
+      { headers: { "x-api-key": "123-test-key" } }
+    );
+    if (!res.ok) return [];
+    const data = await res.json();
+    const items = Array.isArray(data) ? data : data?.data || data?.masjids || [];
+    return items.map((m: any) => ({
+      id: `masjidi-${m.id || m._id || Math.random()}`,
+      name: m.name || m.masjidName || "Unknown Mosque",
+      lat: m.latitude || m.lat || m.location?.lat || 0,
+      lon: m.longitude || m.long || m.lng || m.location?.lng || 0,
+      distance: haversineDistance(lat, lon, m.latitude || m.lat || m.location?.lat || 0, m.longitude || m.long || m.lng || m.location?.lng || 0),
+      address: m.address || [m.street, m.city, m.state, m.country].filter(Boolean).join(", ") || undefined,
+      phone: m.phone || m.phoneNumber || undefined,
+      website: m.website || m.url || undefined,
+      timezone: m.timezone || undefined,
+      source: "MasjidiApp",
+    })).filter((m: Mosque) => m.lat !== 0 && m.lon !== 0);
+  } catch {
+    return [];
+  }
 }
 
-async function fetchOverpassWithRetry(query: string, retries = 2): Promise<Response> {
-  for (let i = 0; i <= retries; i++) {
+// Overpass API (OpenStreetMap) for mosques
+async function searchOverpass(lat: number, lon: number, radius: number): Promise<Mosque[]> {
+  try {
+    const bbox = `(around:${radius},${lat},${lon})`;
+    const query = `[out:json][timeout:20];(
+      node["amenity"="place_of_worship"]["religion"="muslim"]${bbox};
+      way["amenity"="place_of_worship"]["religion"="muslim"]${bbox};
+      node["building"="mosque"]${bbox};
+      way["building"="mosque"]${bbox};
+      node["amenity"="place_of_worship"]["religion"="islam"]${bbox};
+      way["amenity"="place_of_worship"]["religion"="islam"]${bbox};
+      node["amenity"="place_of_worship"]["name"~"mosque|masjid|mezquita|mosquée|مسجد|cami",i]${bbox};
+      way["amenity"="place_of_worship"]["name"~"mosque|masjid|mezquita|mosquée|مسجد|cami",i]${bbox};
+    );out center body;`;
+    
     const res = await fetch("https://overpass-api.de/api/interpreter", {
       method: "POST",
       headers: { "Content-Type": "application/x-www-form-urlencoded" },
       body: `data=${encodeURIComponent(query)}`,
     });
-    if (res.status === 429 && i < retries) {
-      await new Promise(r => setTimeout(r, 3000 * (i + 1)));
-      continue;
-    }
-    return res;
-  }
-  throw new Error("Overpass API rate limited");
-}
-
-async function searchNearby(lat: number, lon: number, type: PlaceType | "all", radius = 5000): Promise<NearbyPlace[]> {
-  const query = buildOverpassQuery(lat, lon, radius, type);
-  const res = await fetchOverpassWithRetry(query);
-
-  if (!res.ok) throw new Error(`Overpass API error: ${res.status}`);
-  const data = await res.json();
-
-  const seen = new Set<string>();
-  const places: NearbyPlace[] = [];
-
-  for (const el of data.elements || []) {
-    const tags = el.tags || {};
-    const name = tags.name || tags["name:en"] || tags["name:ar"] || "";
-    if (!name) continue;
-
-    // Dedup by name+type
-    const key = `${name.toLowerCase()}-${classifyPlace(tags)}`;
-    if (seen.has(key)) continue;
-    seen.add(key);
-
-    const elLat = el.lat || el.center?.lat;
-    const elLon = el.lon || el.center?.lon;
-    if (!elLat || !elLon) continue;
-
-    places.push({
-      id: el.id,
-      name,
-      type: classifyPlace(tags),
-      lat: elLat,
-      lon: elLon,
-      distance: haversineDistance(lat, lon, elLat, elLon),
-      address: buildAddress(tags),
-      phone: tags.phone || tags["contact:phone"] || undefined,
-      website: tags.website || tags["contact:website"] || undefined,
-      openingHours: tags.opening_hours || undefined,
-      cuisine: tags.cuisine || undefined,
-      tags,
-    });
-  }
-
-  places.sort((a, b) => a.distance - b.distance);
-  return places;
-}
-
-// Also search Nominatim for additional results
-async function searchNominatim(lat: number, lon: number, type: PlaceType, radius = 5000): Promise<NearbyPlace[]> {
-  const queries: Record<PlaceType, string[]> = {
-    mosque: ["mosque", "masjid", "islamic center", "mezquita", "mosquée", "مسجد", "cami"],
-    restaurant: ["halal restaurant", "halal food"],
-    shop: ["halal shop", "halal grocery"],
-    butcher: ["halal butcher", "halal meat"],
-  };
-
-  const degreeSpread = Math.max(0.15, radius / 111000 * 2);
-  const allResults: NearbyPlace[] = [];
-
-  try {
-    for (const q of queries[type]) {
-      const res = await fetch(
-        `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(q)}&format=json&limit=20&lat=${lat}&lon=${lon}&viewbox=${lon - degreeSpread},${lat + degreeSpread},${lon + degreeSpread},${lat - degreeSpread}`,
-        { headers: { "User-Agent": "IslamicCompanionApp/1.0" } }
-      );
-      if (!res.ok) continue;
-      const data = await res.json();
-
-      for (const item of data) {
-        const itemLat = parseFloat(item.lat);
-        const itemLon = parseFloat(item.lon);
-        const dist = haversineDistance(lat, lon, itemLat, itemLon);
-        if (dist > radius / 1000 * 1.5) continue; // allow some slack beyond radius
-        allResults.push({
-          id: item.place_id,
-          name: item.display_name?.split(",")[0] || "Unknown",
-          type,
-          lat: itemLat,
-          lon: itemLon,
-          distance: dist,
-          address: item.display_name?.split(",").slice(1, 3).join(",").trim() || "",
-          tags: {},
-        });
-      }
-      // Small delay between Nominatim requests to respect rate limits
-      await new Promise(r => setTimeout(r, 1100));
-    }
-    return allResults;
-  } catch {
-    return [];
-  }
-}
-
-// OpenTripMap API - free source for mosques (religion.place_of_worship.islam)
-async function searchOpenTripMap(lat: number, lon: number, radius: number): Promise<NearbyPlace[]> {
-  try {
-    const res = await fetch(
-      `https://api.opentripmap.com/0.1/en/places/radius?radius=${radius}&lon=${lon}&lat=${lat}&kinds=mosques&format=json&limit=50&apikey=5ae2e3f221c38a28845f05b6aed6fd5e93eecbf2f4d5b909a8c90d31`
-    );
     if (!res.ok) return [];
     const data = await res.json();
-    
-    return data
-      .filter((item: any) => item.name)
-      .map((item: any) => ({
-        id: item.xid ? parseInt(item.xid.replace(/\D/g, "").slice(0, 9)) || Math.random() * 100000 : Math.random() * 100000,
-        name: item.name,
-        type: "mosque" as PlaceType,
-        lat: item.point?.lat || 0,
-        lon: item.point?.lon || 0,
-        distance: haversineDistance(lat, lon, item.point?.lat || 0, item.point?.lon || 0),
-        address: "",
-        tags: {},
-      }));
-  } catch {
-    return [];
-  }
-}
 
-// Photon geocoder (Komoot) - another free OSM-based search engine  
-async function searchPhoton(lat: number, lon: number, type: PlaceType, radius: number): Promise<NearbyPlace[]> {
-  const queries: Record<PlaceType, string[]> = {
-    mosque: ["mosque", "masjid", "mezquita"],
-    restaurant: ["halal restaurant"],
-    shop: ["halal shop"],
-    butcher: ["halal butcher"],
-  };
-
-  const allResults: NearbyPlace[] = [];
-  try {
-    for (const q of queries[type]) {
-      const res = await fetch(
-        `https://photon.komoot.io/api/?q=${encodeURIComponent(q)}&lat=${lat}&lon=${lon}&limit=20&lang=en`
-      );
-      if (!res.ok) continue;
-      const data = await res.json();
-
-      for (const feature of data.features || []) {
-        const coords = feature.geometry?.coordinates;
-        if (!coords) continue;
-        const fLon = coords[0];
-        const fLat = coords[1];
-        const dist = haversineDistance(lat, lon, fLat, fLon);
-        if (dist > radius / 1000 * 2) continue;
-        const props = feature.properties || {};
-        allResults.push({
-          id: props.osm_id || Math.floor(Math.random() * 100000),
-          name: props.name || "Unknown",
-          type,
-          lat: fLat,
-          lon: fLon,
-          distance: dist,
-          address: [props.street, props.city, props.country].filter(Boolean).join(", "),
-          tags: {},
-        });
-      }
-    }
-    return allResults;
+    const seen = new Set<string>();
+    return (data.elements || [])
+      .map((el: any) => {
+        const tags = el.tags || {};
+        const name = tags.name || tags["name:en"] || tags["name:ar"] || "";
+        if (!name) return null;
+        const key = name.toLowerCase();
+        if (seen.has(key)) return null;
+        seen.add(key);
+        const eLat = el.lat || el.center?.lat;
+        const eLon = el.lon || el.center?.lon;
+        if (!eLat || !eLon) return null;
+        const parts = [tags["addr:housenumber"], tags["addr:street"], tags["addr:city"]].filter(Boolean);
+        return {
+          id: `osm-${el.id}`,
+          name,
+          lat: eLat,
+          lon: eLon,
+          distance: haversineDistance(lat, lon, eLat, eLon),
+          address: parts.length > 0 ? parts.join(", ") : tags["addr:full"] || undefined,
+          phone: tags.phone || tags["contact:phone"] || undefined,
+          website: tags.website || tags["contact:website"] || undefined,
+          source: "OpenStreetMap",
+        } as Mosque;
+      })
+      .filter(Boolean) as Mosque[];
   } catch {
     return [];
   }
@@ -279,350 +114,223 @@ async function searchPhoton(lat: number, lon: number, type: PlaceType, radius: n
 const NearbyPage = () => {
   const navigate = useNavigate();
   const { t } = useTranslation();
-  const [filter, setFilter] = useState<PlaceType | "all">("all");
-  const [places, setPlaces] = useState<NearbyPlace[]>([]);
+  const [mosques, setMosques] = useState<Mosque[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [userLat, setUserLat] = useState<number | null>(null);
   const [userLon, setUserLon] = useState<number | null>(null);
-  const [expandedId, setExpandedId] = useState<number | null>(null);
-  const [searchRadius, setSearchRadius] = useState(5000);
+  const [expandedId, setExpandedId] = useState<string | null>(null);
   const [locationBlocked, setLocationBlocked] = useState(false);
 
-  const typeConfig: Record<PlaceType, { emoji: string; label: string }> = {
-    mosque: { emoji: "🕌", label: t("nearby.mosque") },
-    restaurant: { emoji: "🍽️", label: t("nearby.restaurant") },
-    shop: { emoji: "🛒", label: t("nearby.shop") || "Halal Shop" },
-    butcher: { emoji: "🥩", label: t("nearby.butcher") || "Halal Butcher" },
-  };
-
-  const fetchPlaces = useCallback(async (lat: number, lon: number, type: PlaceType | "all") => {
+  const fetchMosques = useCallback(async (lat: number, lon: number) => {
     setLoading(true);
     setError("");
     try {
-      // Launch all API sources in parallel for maximum coverage
-      const typesToSearch: PlaceType[] = type === "all"
-        ? ["mosque", "restaurant", "shop", "butcher"]
-        : [type];
-
-      const searchMosques = type === "all" || type === "mosque";
-
-      const [overpassResults, ...otherResults] = await Promise.all([
-        searchNearby(lat, lon, type, searchRadius).catch(() => [] as NearbyPlace[]),
-        // Nominatim for each type
-        ...typesToSearch.map(t => searchNominatim(lat, lon, t, searchRadius).catch(() => [] as NearbyPlace[])),
-        // Photon geocoder for each type
-        ...typesToSearch.map(t => searchPhoton(lat, lon, t, searchRadius).catch(() => [] as NearbyPlace[])),
-        // OpenTripMap specifically for mosques
-        searchMosques ? searchOpenTripMap(lat, lon, searchRadius).catch(() => [] as NearbyPlace[]) : Promise.resolve([] as NearbyPlace[]),
+      const [masjidiResults, overpassResults] = await Promise.all([
+        searchMasjidiApp(lat, lon),
+        searchOverpass(lat, lon, 20000),
       ]);
 
-      // Merge and deduplicate all sources
-      const merged = [...overpassResults];
-      const existingNames = new Set(merged.map((p) => p.name.toLowerCase()));
-      for (const results of otherResults) {
-        for (const np of results) {
-          const key = np.name.toLowerCase();
-          if (!existingNames.has(key)) {
-            merged.push(np);
-            existingNames.add(key);
-          }
+      // Merge & deduplicate by name similarity
+      const merged: Mosque[] = [...masjidiResults];
+      const existingNames = new Set(merged.map(m => m.name.toLowerCase().trim()));
+      for (const m of overpassResults) {
+        if (!existingNames.has(m.name.toLowerCase().trim())) {
+          merged.push(m);
+          existingNames.add(m.name.toLowerCase().trim());
         }
       }
-
       merged.sort((a, b) => a.distance - b.distance);
-      setPlaces(merged);
+      setMosques(merged);
 
       if (merged.length === 0) {
-        setError(type === "all"
-          ? "No nearby Islamic places found. Try increasing the search radius."
-          : `No ${typeConfig[type]?.label || type} found nearby. Try a different category or increase radius.`
-        );
+        setError("No mosques found nearby. Try again later or check your location.");
       }
-    } catch (err) {
-      console.error("Search error:", err);
-      setError("Failed to search nearby places. Please check your connection and try again.");
+    } catch {
+      setError("Failed to search for mosques. Please check your connection.");
     } finally {
       setLoading(false);
     }
-  }, [searchRadius, t]);
+  }, []);
 
   const requestLocation = useCallback(() => {
     setLoading(true);
     setError("");
     setLocationBlocked(false);
-
     if (!navigator.geolocation) {
       setError("Geolocation is not supported by your browser.");
       setLoading(false);
       return;
     }
-
     navigator.geolocation.getCurrentPosition(
       (pos) => {
-        const { latitude, longitude } = pos.coords;
-        setUserLat(latitude);
-        setUserLon(longitude);
-        fetchPlaces(latitude, longitude, filter);
+        setUserLat(pos.coords.latitude);
+        setUserLon(pos.coords.longitude);
+        fetchMosques(pos.coords.latitude, pos.coords.longitude);
       },
       () => {
         setLocationBlocked(true);
-        setError("Location access denied. Please enable location to find nearby places.");
+        setError("Location access denied. Please enable location to find nearby mosques.");
         setLoading(false);
       },
       { enableHighAccuracy: true, timeout: 20000, maximumAge: 60000 }
     );
-  }, [fetchPlaces, filter]);
+  }, [fetchMosques]);
 
   useEffect(() => {
     requestLocation();
   }, [requestLocation]);
 
-  useEffect(() => {
-    if (userLat !== null && userLon !== null) {
-      fetchPlaces(userLat, userLon, filter);
-    }
-  }, [filter, searchRadius]);
-
-  const navigateToPlace = (place: NearbyPlace) => {
-    // Try native geo URI first (works on mobile), fallback to Google Maps
-    const geoUri = `geo:${place.lat},${place.lon}?q=${place.lat},${place.lon}(${encodeURIComponent(place.name)})`;
-    const googleMapsUrl = `https://www.google.com/maps/dir/?api=1&origin=${userLat},${userLon}&destination=${place.lat},${place.lon}&travelmode=driving`;
-
-    // On mobile, geo: URI opens native maps; on desktop, fallback to Google Maps
-    const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
-    if (isMobile) {
-      window.location.href = geoUri;
-      // Fallback after short delay if geo: didn't work
-      setTimeout(() => window.open(googleMapsUrl, "_blank"), 500);
-    } else {
-      window.open(googleMapsUrl, "_blank");
-    }
-  };
-
-  const openDirections = (place: NearbyPlace) => {
-    window.open(`https://www.openstreetmap.org/directions?from=${userLat},${userLon}&to=${place.lat},${place.lon}`, "_blank");
-  };
-
-  const openInMaps = (place: NearbyPlace) => {
-    window.open(`https://www.google.com/maps/dir/?api=1&origin=${userLat},${userLon}&destination=${place.lat},${place.lon}`, "_blank");
+  const openDirections = (mosque: Mosque) => {
+    const url = `https://www.google.com/maps/dir/?api=1&origin=${userLat},${userLon}&destination=${mosque.lat},${mosque.lon}&travelmode=driving`;
+    window.open(url, "_blank");
   };
 
   return (
-    <div className="min-h-screen">
-      <div className="gradient-emerald px-4 pb-8 pt-12 islamic-pattern">
-        <button onClick={() => navigate("/")} className="mb-4 flex items-center gap-2 text-primary-foreground/80">
-          <ArrowLeft size={20} /><span className="text-sm">{t("common.back")}</span>
-        </button>
-        <h1 className="text-2xl font-bold text-primary-foreground">{t("nearby.title")}</h1>
-        <p className="mt-1 text-sm text-primary-foreground/70">{t("nearby.subtitle")}</p>
+    <div className="min-h-screen bg-background">
+      {/* Header */}
+      <div className="bg-gradient-to-br from-[hsl(160,40%,32%)] via-[hsl(160,38%,38%)] to-[hsl(43,70%,45%)] px-4 pb-10 pt-12 relative overflow-hidden">
+        <div className="absolute inset-0 opacity-10 islamic-pattern" />
+        <div className="relative z-10">
+          <button onClick={() => navigate("/")} className="mb-4 flex items-center gap-2 text-white/80 hover:text-white transition-colors">
+            <ArrowLeft size={20} /><span className="text-sm">{t("common.back")}</span>
+          </button>
+          <div className="flex items-center gap-3 mb-1">
+            <span className="text-3xl">🕌</span>
+            <h1 className="text-2xl font-bold text-white">Mosques Nearby</h1>
+          </div>
+          <p className="text-sm text-white/70 ml-12">Find mosques around your location</p>
+        </div>
       </div>
 
-      <div className="px-4 -mt-4 pb-6 space-y-4">
-        {/* Category Filter */}
-        <div className="flex gap-2 overflow-x-auto pb-1">
-          {(["all", "mosque", "restaurant", "shop", "butcher"] as const).map((type) => (
+      <div className="px-4 -mt-5 pb-24 space-y-3 relative z-10">
+        {/* Info Card */}
+        <div className="bg-card rounded-2xl border border-border/50 p-4 shadow-sm">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <MapPin size={16} className="text-primary" />
+              <span className="text-sm text-muted-foreground">
+                {userLat && userLon
+                  ? `${userLat.toFixed(4)}, ${userLon.toFixed(4)}`
+                  : t("common.locationUnavailable")}
+              </span>
+            </div>
             <button
-              key={type}
-              onClick={() => setFilter(type)}
-              className={`shrink-0 rounded-full px-4 py-2 text-xs font-medium transition-all ${
-                filter === type ? "gradient-emerald text-primary-foreground shadow-emerald" : "bg-card text-muted-foreground"
-              }`}
+              onClick={requestLocation}
+              className="flex items-center gap-1.5 text-xs font-medium text-primary hover:text-primary/80 transition-colors"
             >
-              {type === "all" ? `📍 ${t("common.all")}` : `${typeConfig[type].emoji} ${typeConfig[type].label}`}
+              <RefreshCw size={14} />
+              Refresh
             </button>
-          ))}
-        </div>
-
-        {/* Search Radius */}
-        <div className="flex items-center gap-3 rounded-xl bg-card p-3 border border-border">
-          <MapPin size={16} className="text-primary shrink-0" />
-          <span className="text-xs text-muted-foreground shrink-0">Radius:</span>
-          <div className="flex gap-2">
-            {[2000, 5000, 10000, 20000].map((r) => (
-              <button
-                key={r}
-                onClick={() => setSearchRadius(r)}
-                className={`rounded-full px-3 py-1 text-xs font-medium transition-all ${
-                  searchRadius === r ? "gradient-emerald text-primary-foreground" : "bg-secondary text-muted-foreground"
-                }`}
-              >
-                {r >= 1000 ? `${r / 1000}km` : `${r}m`}
-              </button>
-            ))}
           </div>
+          <p className="text-xs text-muted-foreground/60 mt-2">
+            Powered by MasjidiApp & OpenStreetMap · Showing mosques within 20 km
+          </p>
         </div>
-
-        {/* Map preview with OSM */}
-        {userLat && userLon && (
-          <div className="rounded-xl overflow-hidden border border-border shadow-sm">
-            <iframe
-              title="Nearby Map"
-              width="100%"
-              height="200"
-              frameBorder="0"
-              src={`https://www.openstreetmap.org/export/embed.html?bbox=${userLon - 0.03},${userLat - 0.02},${userLon + 0.03},${userLat + 0.02}&layer=mapnik&marker=${userLat},${userLon}`}
-              className="w-full"
-            />
-          </div>
-        )}
 
         {/* Loading */}
         {loading && (
-          <div className="flex flex-col items-center justify-center py-12">
-            <Loader2 size={32} className="animate-spin text-primary mb-3" />
-            <p className="text-sm text-muted-foreground">Searching nearby places...</p>
-            <p className="text-xs text-muted-foreground/70 mt-1">Using OpenStreetMap data</p>
+          <div className="flex flex-col items-center justify-center py-16 gap-3">
+            <Loader2 className="animate-spin text-primary" size={32} />
+            <p className="text-sm text-muted-foreground">Searching for mosques nearby...</p>
           </div>
         )}
 
         {/* Error */}
         {error && !loading && (
-          <div className="rounded-xl bg-destructive/10 border border-destructive/20 p-4 flex items-start gap-3">
-            <AlertCircle size={18} className="text-destructive shrink-0 mt-0.5" />
-            <div>
-              <p className="text-sm text-destructive">{error}</p>
-              {userLat && userLon ? (
-                <button
-                  onClick={() => fetchPlaces(userLat, userLon, filter)}
-                  className="mt-2 flex items-center gap-1 text-xs font-medium text-primary"
-                >
-                  <RefreshCw size={12} /> Try again
-                </button>
-              ) : (
-                <button
-                  onClick={requestLocation}
-                  className="mt-2 flex items-center gap-1 text-xs font-medium text-primary"
-                >
-                  <MapPin size={12} /> Enable location
-                </button>
-              )}
-              {locationBlocked && (
-                <p className="mt-1 text-[11px] text-muted-foreground">
-                  If you denied it before, enable Location permission in your phone settings for this app, then try again.
-                </p>
-              )}
-            </div>
+          <div className="bg-destructive/10 border border-destructive/20 rounded-xl p-4 text-center">
+            <AlertCircle className="mx-auto mb-2 text-destructive" size={24} />
+            <p className="text-sm text-destructive">{error}</p>
+            {locationBlocked && (
+              <button onClick={requestLocation} className="mt-3 text-xs font-medium text-primary underline">
+                Try Again
+              </button>
+            )}
           </div>
         )}
 
         {/* Results count */}
-        {!loading && places.length > 0 && (
-          <p className="text-xs text-muted-foreground">
-            Found <span className="font-semibold text-foreground">{places.length}</span> place{places.length !== 1 ? "s" : ""} within {searchRadius >= 1000 ? `${searchRadius / 1000}km` : `${searchRadius}m`}
+        {!loading && mosques.length > 0 && (
+          <p className="text-xs text-muted-foreground px-1">
+            {mosques.length} mosque{mosques.length !== 1 ? "s" : ""} found
           </p>
         )}
 
-        {/* Results */}
-        <div className="space-y-3">
-          <AnimatePresence>
-            {!loading && places.map((place, i) => (
-              <motion.div
-                key={`${place.id}-${place.name}`}
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: Math.min(i * 0.04, 0.5) }}
-                className="rounded-xl bg-card shadow-sm border border-border overflow-hidden"
+        {/* Mosque List */}
+        <AnimatePresence>
+          {!loading && mosques.map((mosque, i) => (
+            <motion.div
+              key={mosque.id}
+              initial={{ opacity: 0, y: 12 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: i * 0.03, duration: 0.25 }}
+              className="bg-card rounded-2xl border border-border/50 overflow-hidden shadow-sm"
+            >
+              <button
+                onClick={() => setExpandedId(expandedId === mosque.id ? null : mosque.id)}
+                className="w-full px-4 py-3.5 flex items-center gap-3 text-left"
               >
-                <div className="flex items-center gap-3 p-4">
-                  <button
-                    onClick={() => setExpandedId(expandedId === place.id ? null : place.id)}
-                    className="flex items-center gap-3 flex-1 min-w-0 text-left"
-                  >
-                    <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-secondary text-2xl shrink-0">
-                      {typeConfig[place.type].emoji}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="font-semibold text-foreground truncate">{place.name}</p>
-                      {place.address && (
-                        <p className="text-xs text-muted-foreground truncate">{place.address}</p>
-                      )}
-                      <div className="mt-1 flex items-center gap-3">
-                        <span className="flex items-center gap-1 text-xs text-muted-foreground">
-                          <Navigation size={12} className="text-primary" />
-                          {formatDistance(place.distance)}
-                        </span>
-                        {place.cuisine && (
-                          <span className="text-xs text-muted-foreground truncate">{place.cuisine}</span>
-                        )}
-                        <span className="rounded-full bg-secondary px-2 py-0.5 text-[10px] font-medium text-secondary-foreground">
-                          {typeConfig[place.type].label}
-                        </span>
-                      </div>
-                    </div>
-                  </button>
-                  {/* Big Navigate Button */}
-                  <button
-                    onClick={(e) => { e.stopPropagation(); navigateToPlace(place); }}
-                    className="shrink-0 flex flex-col items-center justify-center gap-1 rounded-xl gradient-emerald px-4 py-3 shadow-emerald active:scale-95 transition-transform"
-                  >
-                    <Navigation size={22} className="text-primary-foreground" />
-                    <span className="text-[10px] font-bold text-primary-foreground tracking-wide">GO</span>
-                  </button>
+                <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center text-lg shrink-0">
+                  🕌
                 </div>
-
-                <AnimatePresence>
-                  {expandedId === place.id && (
-                    <motion.div
-                      initial={{ height: 0, opacity: 0 }}
-                      animate={{ height: "auto", opacity: 1 }}
-                      exit={{ height: 0, opacity: 0 }}
-                      className="overflow-hidden"
-                    >
-                      <div className="px-4 pb-4 pt-0 space-y-3 border-t border-border">
-                        {place.openingHours && (
-                          <div className="flex items-center gap-2 pt-3">
-                            <Clock size={14} className="text-muted-foreground" />
-                            <p className="text-xs text-muted-foreground">{place.openingHours}</p>
-                          </div>
-                        )}
-                        {place.phone && (
-                          <a href={`tel:${place.phone}`} className="flex items-center gap-2 text-xs text-primary">
-                            <Phone size={14} /> {place.phone}
-                          </a>
-                        )}
-                        {place.website && (
-                          <a href={place.website} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 text-xs text-primary truncate">
-                            <ExternalLink size={14} /> {place.website}
-                          </a>
-                        )}
-                        <div className="flex gap-2 pt-1">
-                          <button
-                            onClick={() => openInMaps(place)}
-                            className="flex-1 flex items-center justify-center gap-2 rounded-lg gradient-emerald py-2.5 text-xs font-medium text-primary-foreground"
-                          >
-                            <Navigation size={14} /> Google Maps
-                          </button>
-                          <button
-                            onClick={() => openDirections(place)}
-                            className="flex-1 flex items-center justify-center gap-2 rounded-lg bg-secondary py-2.5 text-xs font-medium text-foreground"
-                          >
-                            <MapPin size={14} /> OpenStreetMap
-                          </button>
-                        </div>
-                      </div>
-                    </motion.div>
+                <div className="flex-1 min-w-0">
+                  <h3 className="font-semibold text-sm text-foreground truncate">{mosque.name}</h3>
+                  {mosque.address && (
+                    <p className="text-xs text-muted-foreground truncate mt-0.5">{mosque.address}</p>
                   )}
-                </AnimatePresence>
-              </motion.div>
-            ))}
-          </AnimatePresence>
-        </div>
+                </div>
+                <div className="text-right shrink-0">
+                  <span className="text-xs font-semibold text-primary">{formatDistance(mosque.distance)}</span>
+                  <p className="text-[10px] text-muted-foreground/60 mt-0.5">{mosque.source}</p>
+                </div>
+              </button>
 
-        {/* Refresh */}
-        {!loading && userLat && userLon && (
-          <button
-            onClick={() => fetchPlaces(userLat, userLon, filter)}
-            className="w-full flex items-center justify-center gap-2 rounded-xl gradient-emerald py-3 font-medium text-primary-foreground shadow-emerald transition-all active:scale-95"
-          >
-            <RefreshCw size={16} /> Refresh Results
-          </button>
-        )}
+              <AnimatePresence>
+                {expandedId === mosque.id && (
+                  <motion.div
+                    initial={{ height: 0, opacity: 0 }}
+                    animate={{ height: "auto", opacity: 1 }}
+                    exit={{ height: 0, opacity: 0 }}
+                    transition={{ duration: 0.2 }}
+                    className="overflow-hidden"
+                  >
+                    <div className="px-4 pb-4 pt-1 border-t border-border/30 space-y-3">
+                      {mosque.address && (
+                        <div className="flex items-start gap-2">
+                          <MapPin size={14} className="text-muted-foreground mt-0.5 shrink-0" />
+                          <span className="text-xs text-muted-foreground">{mosque.address}</span>
+                        </div>
+                      )}
+                      {mosque.phone && (
+                        <a href={`tel:${mosque.phone}`} className="flex items-center gap-2 text-xs text-primary">
+                          <Phone size={14} />{mosque.phone}
+                        </a>
+                      )}
+                      {mosque.website && (
+                        <a href={mosque.website} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 text-xs text-primary">
+                          <ExternalLink size={14} />Website
+                        </a>
+                      )}
+                      {mosque.timezone && (
+                        <p className="text-xs text-muted-foreground">🕐 {mosque.timezone}</p>
+                      )}
 
-        {/* Attribution */}
-        <p className="text-[10px] text-muted-foreground/50 text-center pt-2">
-          Data from OpenStreetMap contributors · Overpass API · Nominatim
-        </p>
+                      <div className="flex gap-2 pt-1">
+                        <button
+                          onClick={() => openDirections(mosque)}
+                          className="flex-1 flex items-center justify-center gap-1.5 bg-primary text-primary-foreground rounded-xl py-2.5 text-xs font-semibold hover:bg-primary/90 transition-colors"
+                        >
+                          <Navigation size={14} />
+                          Get Directions
+                        </button>
+                      </div>
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </motion.div>
+          ))}
+        </AnimatePresence>
       </div>
     </div>
   );
